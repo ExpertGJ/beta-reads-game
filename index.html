@@ -55,16 +55,14 @@
         .nav-arrow:hover {
             opacity: 0.7;
         }
-        /* Flechas del PANEL SUPERIOR: siempre el tono más oscuro, sin cambios al tocar
-           (en el móvil :hover se queda "pegado" tras el toque). Las del perfil y la búsqueda no cambian. */
+        /* Flechas del PANEL SUPERIOR: siempre el tono más oscuro (sin aclararse al tocar; en el móvil
+           :hover se queda "pegado" tras el toque). La sombra azulita del toque se conserva. */
         #stats-panel .nav-arrow,
         #stats-panel .nav-arrow:hover,
         #stats-panel .nav-arrow:active,
         #stats-panel .nav-arrow:focus {
             opacity: 1;
-            outline: none;
             transition: none;
-            -webkit-tap-highlight-color: transparent;
         }
         /* ---- Recuadro de música: discreto, para no distraer de la lectura ---- */
         .music-box {
@@ -827,34 +825,15 @@
         let paginaPerfil = 0;
         let calificacionPorEliminar = null;
 
-        // Resumen del perfil: "Valorados" sale del teléfono; "Disponibles" se pide UNA sola vez por sesión
-        // (una función mínima de Supabase que devuelve un número) y se guarda solo en memoria.
-        let valoradosActual = 0;
-        let totalDisponibles = null;
-        let pidiendoTotal = false;
-        function pintarResumenPerfil() {
+        // Resumen del perfil: "Valorados" sale del teléfono (cero tráfico, cero peticiones)
+        function pintarResumenPerfil(total) {
             const el = document.getElementById('perfil-resumen');
-            if (!el) return;
-            const disp = totalDisponibles === null ? '…' : totalDisponibles.toLocaleString('es');
-            el.textContent = `Valorados: ${valoradosActual} | Disponibles: ${disp}`;
-        }
-        async function cargarTotalDisponibles() {
-            if (totalDisponibles !== null || pidiendoTotal) return;
-            pidiendoTotal = true;
-            try {
-                const { data, error } = await supabaseClient.rpc('contar_historias_publicas');
-                if (!error && Number.isInteger(data)) totalDisponibles = data;
-            } catch (e) {
-            } finally {
-                pidiendoTotal = false;
-            }
-            pintarResumenPerfil();
+            if (el) el.textContent = `Valorados: ${total}`;
         }
 
         function pintarPerfil() {
             const lista = listarCalificaciones();
-            valoradosActual = lista.length;
-            pintarResumenPerfil();
+            pintarResumenPerfil(lista.length);
             const ultimaPagina = Math.max(0, Math.ceil(lista.length / CALIFICACIONES_POR_PAGINA) - 1);
             if (paginaPerfil > ultimaPagina) paginaPerfil = ultimaPagina;
             if (paginaPerfil < 0) paginaPerfil = 0;
@@ -915,7 +894,6 @@
             perfilAbierto = true;
             paginaPerfil = 0;
             pintarPerfil();
-            cargarTotalDisponibles(); // solo la primera vez de la sesión; después sale de la memoria
             document.getElementById('vista-lectura').style.display = 'none';
             document.getElementById('vista-perfil').style.display = 'flex';
             const b = document.getElementById('btn-perfil');
@@ -1295,8 +1273,6 @@
             const data = candidatas.find(c => !evitar.includes(c.historia_id))
                       || candidatas.find(c => c.historia_id !== historiaActualId)
                       || primera;
-            // El total de historias disponibles viaja DENTRO de esta misma respuesta: cero peticiones extra
-            if (Number.isInteger(primera.total_disponibles)) totalDisponibles = primera.total_disponibles;
             // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
             // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
             guardarEnCache(data);
