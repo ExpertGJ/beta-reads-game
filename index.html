@@ -1212,11 +1212,25 @@
             marcarLeida(n);
         }
 
-        // Pide una historia nueva: no calificada/terminada y no vista hace poco (40% recientes / 60% resto)
+        // Pide una historia nueva: no calificada/terminada y no vista hace poco (40% recientes / 60% resto).
+        // CORRECCIÓN: si la base devuelve una de las 2 últimas historias mostradas (catálogo pequeño con
+        // una sola "pendiente"), se pide otra vez ignorando las permanentes: así rotan TODAS las historias
+        // y ninguna desaparece del panel superior.
         async function pedirHistoriaPonderada() {
-            const { data, error } = await supabaseClient
-                .rpc('obtener_historia_no_leida', { p_perm: textoPermanentes(), p_recientes: leidas });
-            if (error || !data) return null;
+            const llamar = (perm) => supabaseClient
+                .rpc('obtener_historia_no_leida', { p_perm: perm, p_recientes: leidas });
+
+            const { data: primera, error } = await llamar(textoPermanentes());
+            if (error || !primera) return null;
+            let data = primera;
+
+            const vistasRecien = historialIds.slice(-2);
+            if (vistasRecien.includes(data.historia_id)) {
+                const { data: otra, error: error2 } = await llamar('');
+                if (!error2 && otra && !vistasRecien.includes(otra.historia_id)) {
+                    data = otra;
+                }
+            }
             // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
             // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
             guardarEnCache(data);
