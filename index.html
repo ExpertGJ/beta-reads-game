@@ -686,6 +686,21 @@
                 localStorage.setItem(CLAVE_PERM, btoa(s));
             } catch (e) {}
         }
+        // Inverso de marcarPermanente: la historia vuelve a poder recomendarse.
+        // Se usa cuando una calificación se elimina o sale del historial por el tope.
+        function desmarcarPermanente(n) {
+            if (!Number.isInteger(n) || n < 0 || n > MAX_N_PERM) return;
+            try {
+                const bytes = leerPermBytes();
+                if ((n >> 3) >= bytes.length || !(bytes[n >> 3] & (1 << (n & 7)))) return; // no estaba marcada
+                bytes[n >> 3] &= ~(1 << (n & 7));
+                let fin = bytes.length;
+                while (fin > 0 && bytes[fin - 1] === 0) fin--; // quita los bytes vacíos del final
+                let s = '';
+                for (let i = 0; i < fin; i++) s += String.fromCharCode(bytes[i]);
+                if (fin === 0) localStorage.removeItem(CLAVE_PERM); else localStorage.setItem(CLAVE_PERM, btoa(s));
+            } catch (e) {}
+        }
         function textoPermanentes() {
             try { return localStorage.getItem(CLAVE_PERM) || ''; } catch (e) { return ''; }
         }
@@ -736,14 +751,23 @@
             v[hId] = { e: estrellas, t: titulo || '', a: autor || '', n: Number.isInteger(n) ? n : null };
             const claves = Object.keys(v);
             if (claves.length > MAX_VOTOS_GUARDADOS) {
-                claves.slice(0, claves.length - MAX_VOTOS_GUARDADOS).forEach(k => delete v[k]);
+                // Las calificaciones más antiguas salen del historial y esas historias vuelven a poder recomendarse
+                claves.slice(0, claves.length - MAX_VOTOS_GUARDADOS).forEach(k => {
+                    const x = v[k];
+                    if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
+                    delete v[k];
+                });
             }
             escribirVotos(v);
         }
         function eliminarVotoLocal(hId) {
             const v = leerVotos();
+            const x = v[hId];
             delete v[hId];
             escribirVotos(v);
+            // Quien elimina una calificación quiere poder volver a leerla y calificarla:
+            // la historia vuelve a poder recomendarse
+            if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
         }
         // Si la calificación se guardó sin título/autor/número (versión anterior), se completa al ver la historia.
         // Una historia calificada siempre queda como permanente (nunca se vuelve a recomendar).
@@ -899,7 +923,7 @@
             const id = calificacionPorEliminar;
             cerrarModalConfirmar();
             if (!id) return;
-            eliminarVotoLocal(id); // la historia sigue como "terminada": no se vuelve a recomendar
+            eliminarVotoLocal(id); // la historia vuelve a poder recomendarse
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             pintarPerfil();
             if (id === historiaActualId) refrescarBloqueVotacion();
