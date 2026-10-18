@@ -1,1592 +1,1544 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beta Reads</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body {
-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-background-color: var(--tg-theme-bg-color, #ffffff);
-color: var(--tg-theme-text-color, #000000);
-margin: 0;
-padding: 16px;
-display: flex;
-flex-direction: column;
-align-items: center;
-}
-.container {
-max-width: 480px;
-width: 100%;
-display: flex;
-flex-direction: column;
-gap: 12px;
-}
-.stats-box {
-background: rgba(0,0,0,0.04);
-padding: 12px;
-border-radius: 12px;
-font-size: 13px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-text-align: center;
-}
-.stats-center {
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 4px;
-flex: 1;
-}
-.nav-arrow {
-background: none;
-border: none;
-font-size: 24px;
-font-weight: bold;
-color: var(--tg-theme-text-color, #2481cc);
-cursor: pointer;
-padding: 0 8px;
-user-select: none;
-transition: opacity 0.2s;
-}
-.nav-arrow:hover {
-opacity: 0.7;
-}
-/* ---- Recuadro de música: discreto, para no distraer de la lectura ---- */
-.music-box {
-display: flex;
-align-items: center;
-gap: 8px;
-background-color: var(--tg-theme-button-color, #2481cc);
-color: var(--tg-theme-button-text-color, #ffffff);
-border-radius: 8px;
-padding: 7px 12px;
-}
-.music-nav-arrow {
-background: none;
-border: none;
-color: inherit;
-opacity: 0.7;
-padding: 2px;
-display: flex;
-align-items: center;
-/* blanco atenuado: las flechas acompañan, no compiten con el texto */
-justify-content: center;
-cursor: pointer;
-user-select: none;
-transition: opacity 0.2s;
-}
-.music-nav-arrow:hover,
-.music-nav-arrow:active {
-opacity: 1;
-}
-.music-nav-arrow svg {
-width: 14px;
-height: 14px;
-display: block;
-}
-.music-toggle {
-background: none;
-border: none;
-color: inherit;
-font-size: 13px;
-font-weight: 600;
-padding: 0;
-cursor: pointer;
-white-space: nowrap;
-}
-.story-author-header {
-font-size: 18px;
-font-weight: bold;
-font-style: italic;
-color: var(--tg-theme-text-color, #000000);
-}
-.author-name {
-font-size: 13px;
-color: #666;
-margin-top: 2px;
-}
-.stars-container {
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 4px;
-font-size: 15px;
-font-weight: bold;
-}
-.stars-display {
-color: #ffc107;
-font-size: 16px;
-letter-spacing: 2px;
-}
-.rating-box {
-background: #f8f9fa;
-border: 1px solid #dee2e6;
-padding: 15px;
-border-radius: 12px;
-text-align: center;
-margin-top: 10px;
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 8px;
-}
-.interactive-stars {
-font-size: 28px;
-color: #ccc;
-cursor: pointer;
-letter-spacing: 4px;
-user-select: none;
-}
-.interactive-stars span {
-transition: color 0.2s;
-}
-.interactive-stars span:hover,
-.interactive-stars span.active {
-color: #ffc107;
-}
-img {
-width: 100%;
-border-radius: 12px;
-object-fit: cover;
-max-height: 220px;
-background-color: #eee;
-}
-.progress-bars {
-display: flex;
-gap: 6px;
-width: 100%;
-margin-top: -4px;
-margin-bottom: 4px;
-}
-.bar {
-flex: 1;
-height: 4px;
-border-radius: 2px;
-background-color: #e0e0e0;
-transition: background-color 0.4s ease;
-}
-.bar.active {
-background-color: #28a745;
-}
-.title {
-font-size: 18px;
-font-weight: bold;
-font-style: italic;
-text-align: center;
-margin-bottom: 2px;
-}
-.question {
-font-size: 15px;
-line-height: 1.4;
-text-align: center;
-}
-.options-container {
-display: flex;
-flex-direction: column;
-gap: 10px;
-width: 100%;
-}
-/* ---- Fila inferior: texto de ayuda + icono de compartir ---- */
-.hint-row {
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 10px;
-margin-top: 4px;
-}
-.instruction-hint {
-position: relative; /* el icono se ancla al texto, así el texto queda centrado en la pantalla */
-font-style: italic;
-text-align: center;
-font-size: 14px;
-color: var(--tg-theme-hint-color, #707579);
-}
-.btn-compartir-icono {
-position: absolute;
-left: 100%;
-top: 50%;
-transform: translateY(-50%);
-margin-left: 2px;
-background: none;
-border: none;
-padding: 4px;
-cursor: pointer;
-color: var(--tg-theme-hint-color, #707579);
-opacity: 0.5;
-display: flex;
-/* tenue para no distraer de la lectura */
-align-items: center;
-justify-content: center;
-transition: opacity 0.2s;
-}
-.btn-compartir-icono:active {
-opacity: 0.9;
-}
-.btn-compartir-icono svg {
-width: 17px;
-height: 17px;
-display: block;
-}
-.btn {
-background-color: var(--tg-theme-button-color, #2481cc);
-color: var(--tg-theme-button-text-color, #ffffff);
-border: none;
-padding: 14px;
-border-radius: 10px;
-font-size: 15px;
-font-weight: 600;
-cursor: pointer;
-width: 100%;
-text-align: center;
-}
-.btn:disabled {
-background-color: #e0e0e0;
-color: #555;
-cursor: not-allowed;
-}
-/* Opción elegida: sigue activa para poder desmarcarla tocándola otra vez */
-.btn-seleccionada,
-.btn-seleccionada:disabled {
-background-color: #e0e0e0;
-color: #555;
-cursor: pointer;
-}
-.btn-next {
-background-color: #28a745;
-display: none;
-}
-.stories-box {
-background: #f8f9fa;
-border: 1px solid #dee2e6;
-padding: 15px;
-border-radius: 12px;
-text-align: center;
-display: none;
-margin-top: 10px;
-}
-.search-section-footer {
-margin-top: 14px;
-padding-top: 4px;
-display: flex;
-flex-direction: column;
-gap: 8px;
-}
-.search-input-group {
-display: flex;
-gap: 8px;
-align-items: center;
-width: 100%;
-}
-.search-input {
-flex: 1;
-min-width: 0;
-padding: 11px 12px;
-border: 1px solid #ccc;
-border-radius: 10px;
-font-size: 14px;
-outline: none;
-background: #ffffff;
-color: #000;
-}
-.search-input::placeholder {
-color: #888;
-font-style: italic;
-}
-.search-input:focus {
-border-color: #2481cc;
-}
-.search-btn {
-background-color: var(--tg-theme-button-color, #2481cc);
-color: var(--tg-theme-button-text-color, #ffffff);
-border: none;
-padding: 11px 16px;
-font-size: 14px;
-font-weight: 600;
-border-radius: 10px;
-cursor: pointer;
-white-space: nowrap;
-flex-shrink: 0;
-}
-.search-results {
-max-height: 230px;
-overflow-y: auto;
-display: flex;
-flex-direction: column;
-gap: 6px;
-margin-top: 4px;
-}
-.search-result-item {
-background: #ffffff;
-border: 1px solid #e0e0e0;
-padding: 8px 10px;
-border-radius: 6px;
-cursor: pointer;
-text-align: left;
-font-size: 13px;
-display: flex;
-justify-content: space-between;
-align-items: center;
-}
-.search-result-item:hover {
-background: #e9ecef;
-}
-.blocked-card {
-background: #fff3cd;
-color: #856404;
-padding: 20px;
-border-radius: 12px;
-text-align: center;
-}
-.donation-box {
-background: #fff9e6;
-border: 1px solid #ffe0b2;
-padding: 14px;
-border-radius: 12px;
-text-align: center;
-margin-top: 10px;
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 10px;
-}
-.donation-text {
-font-size: 13px;
-font-style: italic;
-color: #5c3c10;
-line-height: 1.4;
-padding: 0 8px;
-}
-.btn-channel {
-background-color: #2481cc;
-color: #ffffff;
-border: none;
-padding: 11px 20px;
-border-radius: 8px;
-font-size: 14px;
-font-weight: bold;
-cursor: pointer;
-box-shadow: 0 2px 6px rgba(36, 129, 204, 0.35);
-}
-.btn-share {
-background-color: #17a2b8;
-margin-top: 10px;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-}
-.btn-share svg {
-width: 20px;
-height: 20px;
-display: block;
-flex-shrink: 0;
-}
-/* ---- Texto de apoyo al proyecto (vista de perfil) ---- */
-.support-note {
-font-size: 14px;
-line-height: 1.35;
-text-align: center;
-color: var(--tg-theme-hint-color, #555555);
-padding: 4px 10px 0;
-}
-.support-note a {
-color: var(--tg-theme-link-color, #0b4fa8);
-text-decoration: none;
-cursor: pointer;
-}
-/* ---- Botón de perfil y vista "Mis calificaciones" ---- */
-.music-row {
-display: grid;
-grid-template-columns: 1fr auto 1fr;
-align-items: center;
-gap: 8px;
-margin: 5px 0;
-}
-.music-group {
-display: flex;
-justify-content: center;
-align-items: center;
-gap: 8px;
-}
-.btn-perfil {
-justify-self: start;
-width: 34px;
-height: 34px;
-padding: 0;
-border: none;
-border-radius: 50%;
-background: #b9c0c8;
-color: #ffffff;
-display: flex;
-align-items: center;
-justify-content: center;
-cursor: pointer;
-transition: background-color 0.2s;
-}
-.btn-perfil.activo {
-background: var(--tg-theme-button-color, #2481cc);
-}
-.vista-grupo {
-display: flex;
-flex-direction: column;
-gap: 12px;
-}
-#vista-perfil.stories-box {
-display: block;
-margin-top: 0;
-}
-.rating-row {
-background: #ffffff;
-border: 1px solid #e0e0e0;
-border-radius: 6px;
-padding: 8px 10px;
-display: flex;
-align-items: center;
-gap: 8px;
-text-align: left;
-}
-.rating-info {
-flex: 1;
-min-width: 0;
-cursor: pointer;
-}
-.rating-title {
-font-weight: bold;
-font-size: 13px;
-color: #2481cc;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-}
-.rating-author {
-font-size: 11px;
-color: #666;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-}
-.rating-stars {
-color: #ffc107;
-font-size: 14px;
-letter-spacing: 1px;
-white-space: nowrap;
-flex-shrink: 0;
-}
-.rating-delete {
-background: none;
-border: none;
-color: #999;
-font-size: 18px;
-line-height: 1;
-padding: 4px 2px 4px 6px;
-cursor: pointer;
-flex-shrink: 0;
-}
-.rating-empty {
-font-size: 12px;
-font-style: italic;
-color: #666;
-padding: 6px;
-}
-.modal-fondo {
-position: fixed;
-top: 0; left: 0; right: 0; bottom: 0;
-background: rgba(0, 0, 0, 0.45);
-display: none;
-align-items: center;
-justify-content: center;
-padding: 24px;
-z-index: 1000;
-}
-.modal-caja {
-background: var(--tg-theme-bg-color, #ffffff);
-color: var(--tg-theme-text-color, #000000);
-border-radius: 14px;
-padding: 20px;
-width: 100%;
-max-width: 320px;
-text-align: center;
-display: flex;
-flex-direction: column;
-gap: 10px;
-}
-.modal-texto { font-size: 15px; font-weight: 600; }
-.modal-libro { font-size: 13px; font-style: italic; color: var(--tg-theme-hint-color, #707579); }
-.modal-botones { display: flex; gap: 10px; margin-top: 6px; }
-.modal-botones .btn { flex: 1; width: auto; padding: 12px; }
-.btn-cancelar { background-color: #e0e0e0; color: #333333; }
-.btn-eliminar { background-color: #d9534f; color: #ffffff; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beta Reads</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 480px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .stats-box {
+            background: rgba(0,0,0,0.04);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: center;
+        }
+        .stats-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+        }
+        .nav-arrow {
+            background: none;
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-text-color, #2481cc);
+            cursor: pointer;
+            padding: 0 8px;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        .nav-arrow:hover {
+            opacity: 0.7;
+        }
+        /* ---- Recuadro de música: discreto, para no distraer de la lectura ---- */
+        .music-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border-radius: 8px;
+            padding: 7px 12px;
+        }
+        .music-nav-arrow {
+            background: none;
+            border: none;
+            color: inherit;
+            opacity: 0.7;              /* blanco atenuado: las flechas acompañan, no compiten con el texto */
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        .music-nav-arrow:hover,
+        .music-nav-arrow:active {
+            opacity: 1;
+        }
+        .music-nav-arrow svg {
+            width: 14px;
+            height: 14px;
+            display: block;
+        }
+        .music-toggle {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .story-author-header {
+            font-size: 18px;
+            font-weight: bold;
+            font-style: italic;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        .author-name {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
+        }
+        .stars-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .stars-display {
+            color: #ffc107;
+            font-size: 16px;
+            letter-spacing: 2px;
+        }
+        .rating-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .interactive-stars {
+            font-size: 28px;
+            color: #ccc;
+            cursor: pointer;
+            letter-spacing: 4px;
+            user-select: none;
+        }
+        .interactive-stars span {
+            transition: color 0.2s;
+        }
+        .interactive-stars span:hover,
+        .interactive-stars span.active {
+            color: #ffc107;
+        }
+        img {
+            width: 100%;
+            border-radius: 12px;
+            object-fit: cover;
+            max-height: 220px;
+            background-color: #eee;
+        }
+        .progress-bars {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+            margin-top: -4px;
+            margin-bottom: 4px;
+        }
+        .bar {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background-color: #e0e0e0;
+            transition: background-color 0.4s ease;
+        }
+        .bar.active {
+            background-color: #28a745;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            font-style: italic;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        .question {
+            font-size: 15px;
+            line-height: 1.4;
+            text-align: center;
+        }
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+        /* ---- Fila inferior: texto de ayuda + icono de compartir ---- */
+        .hint-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .instruction-hint {
+            position: relative;   /* el icono se ancla al texto, así el texto queda centrado en la pantalla */
+            font-style: italic;
+            text-align: center;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #707579);
+        }
+        .btn-compartir-icono {
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 2px;
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--tg-theme-hint-color, #707579);
+            opacity: 0.5;         /* tenue para no distraer de la lectura */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        .btn-compartir-icono:active {
+            opacity: 0.9;
+        }
+        .btn-compartir-icono svg {
+            width: 17px;
+            height: 17px;
+            display: block;
+        }
+        .btn {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        .btn:disabled {
+            background-color: #e0e0e0;
+            color: #555;
+            cursor: not-allowed;
+        }
+        /* Opción elegida: sigue activa para poder desmarcarla tocándola otra vez */
+        .btn-seleccionada,
+        .btn-seleccionada:disabled {
+            background-color: #e0e0e0;
+            color: #555;
+            cursor: pointer;
+        }
+        .btn-next {
+            background-color: #28a745;
+            display: none;
+        }
+        .stories-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-top: 10px;
+        }
+        .search-section-footer {
+            margin-top: 14px;
+            padding-top: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .search-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            width: 100%;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 0;
+            padding: 11px 12px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            background: #ffffff;
+            color: #000;
+        }
+        .search-input::placeholder {
+            color: #888;
+            font-style: italic;
+        }
+        .search-input:focus {
+            border-color: #2481cc;
+        }
+        .search-btn {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 11px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .search-results {
+            max-height: 230px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .search-result-item {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-result-item:hover {
+            background: #e9ecef;
+        }
+        .blocked-card {
+            background: #fff3cd;
+            color: #856404;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .donation-box {
+            background: #fff9e6;
+            border: 1px solid #ffe0b2;
+            padding: 14px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .donation-text {
+            font-size: 13px;
+            font-style: italic;
+            color: #5c3c10;
+            line-height: 1.4;
+            padding: 0 8px;
+        }
+        .btn-channel {
+            background-color: #2481cc;
+            color: #ffffff;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(36, 129, 204, 0.35);
+        }
+        .btn-share {
+            background-color: #17a2b8;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-share svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+            flex-shrink: 0;
+        }
+        /* ---- Texto de apoyo al proyecto (vista de perfil) ---- */
+        .support-note {
+            font-size: 14px;
+            line-height: 1.35;
+            text-align: center;
+            color: var(--tg-theme-hint-color, #555555);
+            padding: 4px 10px 0;
+        }
+        .support-note a {
+            color: var(--tg-theme-link-color, #0b4fa8);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        /* ---- Botón de perfil y vista "Mis calificaciones" ---- */
+        .music-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+        .music-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-perfil {
+            justify-self: start;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background: #b9c0c8;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-perfil.activo {
+            background: var(--tg-theme-button-color, #2481cc);
+        }
+        .vista-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #vista-perfil .stories-box {
+            display: block;
+            margin-top: 0;
+        }
+        .rating-row {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+        }
+        .rating-info {
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+        }
+        .rating-title {
+            font-weight: bold;
+            font-size: 13px;
+            color: #2481cc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .rating-author {
+            font-size: 11px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .rating-stars {
+            color: #ffc107;
+            font-size: 14px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .rating-delete {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 18px;
+            line-height: 1;
+            padding: 4px 2px 4px 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .rating-empty {
+            font-size: 12px;
+            font-style: italic;
+            color: #666;
+            padding: 6px;
+        }
+        .modal-fondo {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 1000;
+        }
+        .modal-caja {
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            border-radius: 14px;
+            padding: 20px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .modal-texto { font-size: 15px; font-weight: 600; }
+        .modal-libro { font-size: 13px; font-style: italic; color: var(--tg-theme-hint-color, #707579); }
+        .modal-botones { display: flex; gap: 10px; margin-top: 6px; }
+        .modal-botones .btn { flex: 1; width: auto; padding: 12px; }
+        .btn-cancelar { background-color: #e0e0e0; color: #333333; }
+        .btn-eliminar { background-color: #d9534f; color: #ffffff; }
+    </style>
 </head>
 <body>
-<div class="container" id="app">
-<!-- Panel Superior -->
-<div class="stats-box" id="stats-panel">
-<button class="nav-arrow" onclick="cambiarHistoriaAdyacente(-1)">&#10094;</button>
-<div class="stats-center">
-<div id="story-title-author" class="story-author-header">Cargando datos</div>
-<div class="stars-container">
-<span id="avg-rating-num">0.0</span>
-<span class="stars-display" id="avg-stars-icon">★</span>
-<span id="total-ratings-count">(0)</span>
-</div>
-<div id="story-author-name" class="author-name">Autor: Cargando...</div>
-</div>
-<button class="nav-arrow" onclick="cambiarHistoriaAdyacente(1)">&#10095;</button>
-</div>
-<!-- Reproductor de Música (con el botón de perfil a la izquierda) -->
-<div class="music-row">
-<button id="btn-perfil" class="btn-perfil" onclick="alternarVistaPerfil()" aria-label="Mis calificaciones" aria-pressed="false">
-<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8z"/></svg>
-</button>
-<div class="music-group">
-<audio id="bg-music" preload="none" loop></audio>
-<div class="music-box">
-<button class="music-nav-arrow" onclick="cambiarPistaManual(-1)" aria-label="Pista anterior">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="12 6 6 12 12 18"/><polyline points="19 6 13 12 19 18"/></svg>
-</button>
-<button class="music-toggle" onclick="toggleMusicaAleatoria()">
-<span id="music-text">Música: Off</span>
-</button>
-<button class="music-nav-arrow" onclick="cambiarPistaManual(1)" aria-label="Pista siguiente">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="12 6 18 12 12 18"/><polyline points="5 6 11 12 5 18"/></svg>
-</button>
-</div>
-</div>
-<div></div>
-</div>
-<!-- Imagen de la escena -->
-<img id="imagen" alt="Escena" referrerpolicy="no-referrer">
-<!-- Barritas de Progreso Dinámicas -->
-<div class="progress-bars" id="progress-bars-container"></div>
-<!-- Vista de lectura: título, texto y opciones del capítulo -->
-<div id="vista-lectura" class="vista-grupo">
-<!-- Título condicional del capítulo/sección -->
-<div id="titulo" class="title" style="display: none;"></div>
-<!-- Descripción de la escena -->
-<div id="pregunta" class="question">Por favor, espera...</div>
-<!-- Contenedor dinámico de opciones -->
-<div id="opciones-container" class="options-container"></div>
-<!-- Texto de ayuda + icono de compartir la historia -->
-<div class="hint-row" id="hint-row">
-<div id="hint-siguiente" class="instruction-hint">¡Elige una opción y presiona siguiente!
-<button id="btn-compartir-icono" class="btn-compartir-icono" onclick="compartirReseña()" aria-label="Compartir esta historia"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 9V5h-2v4H8l4 4 4-4h-4z"/></svg></button></div>
-</div>
-<button id="btn_next" class="btn btn-next">Siguiente Capítulo →</button>
-</div>
-<!-- Vista de perfil: libros calificados + buscador (se abre con el botón de perfil) -->
-<div id="vista-perfil" class="vista-grupo" style="display: none;">
-<div id="caja-calificaciones" class="stories-box">
-<div id="lista-calificaciones" style="display: flex; flex-direction: column; gap: 6px;"></div>
-<div id="perfil-paginacion" style="display: none; justify-content: space-between; align-items: center; margin-top: 6px;">
-<button id="perfil-prev" class="nav-arrow" onclick="cambiarPaginaPerfil(-1)">&#10094;</button>
-<button id="perfil-next" class="nav-arrow" onclick="cambiarPaginaPerfil(1)">&#10095;</button>
-</div>
-</div>
-<div id="otras-historias" class="stories-box">
-<div class="search-section-footer">
-<div class="search-input-group">
-<input type="text" id="input-busqueda" class="search-input" placeholder="Buscar libro o autor...">
-<button class="search-btn" onclick="buscarHistoriaSupabase()">Buscar</button>
-</div>
-<div id="search-results" class="search-results"></div>
-<div id="search-pagination" style="display: none; justify-content: space-between; align-items: center;">
-<button id="search-prev" class="nav-arrow" onclick="cambiarPaginaBusqueda(-1)">&#10094;</button>
-<button id="search-next" class="nav-arrow" onclick="cambiarPaginaBusqueda(1)">&#10095;</button>
-</div>
-</div>
-</div>
-<!-- Texto de apoyo al proyecto -->
-<div class="support-note">
-Para mantener esta Mini App activa requerimos $25/mes en servidores. Apoya el proyecto enviando un regalo a nuestro canal <a href="https://t.me/BookBetaReader" onclick="abrirCanalRegalos(event)">@BookBetaReader</a>.
-</div>
-</div>
-</div>
-<!-- Cuadro de confirmación para eliminar una calificación -->
-<div id="modal-confirmar" class="modal-fondo" onclick="if (event.target === this) cerrarModalConfirmar()">
-<div class="modal-caja">
-<div class="modal-texto">¿Quieres eliminar esta calificación?</div>
-<div class="modal-libro" id="modal-libro"></div>
-<div class="modal-botones">
-<button class="btn btn-cancelar" onclick="cerrarModalConfirmar()">Cancelar</button>
-<button class="btn btn-eliminar" onclick="confirmarEliminarCalificacion()">Eliminar</button>
-</div>
-</div>
-</div>
-<script>
-const SUPABASE_URL = 'https://cnhtbdzzcfvrdkqzrfjf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaHRiZHp6Y2Z2cmRrcXpyZmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDUzMTcsImV4cCI6MjEwNzIyMTMxN30.nBKNHG4ArcWkctm8n-rF592wZ2Aa7MG4fS-qswboWD0';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-auth: { persistSession: false }
-});
-
-const tg = window.Telegram.WebApp;
-tg.expand();
-let historiaActualId = '';
-let nActual = null; // número (id) de la historia que se está leyendo; lo trae Supabase
-let capituloActualId = 'cap_1';
-let totalPasosHistoria = 3;
-let pasoActualIndex = 0;
-let autorActualNombre = '';
-let tituloActual = '';
-let opcionSeleccionada = null; // opción marcada en el capítulo actual (null = ninguna)
-
-// Solo en memoria mientras la app está abierta (nada de esto se guarda en el teléfono):
-let historialIds = []; // ids de las historias vistas, para las flechas atrás/adelante
-let indiceHistorial = -1;
-const MAX_HISTORIAL = 30;
-
-// Caché en memoria de las últimas historias mostradas: ir atrás/adelante NO vuelve a pedir
-// a Supabase (egreso cero). Se pierde al cerrar la app; no ocupa espacio en el teléfono.
-const MAX_CACHE = 15;
-const cacheHistorias = new Map();
-function guardarEnCache(data) {
-if (!data || !data.historia_id) return;
-cacheHistorias.delete(data.historia_id);
-cacheHistorias.set(data.historia_id, data);
-while (cacheHistorias.size > MAX_CACHE) {
-cacheHistorias.delete(cacheHistorias.keys().next().value);
-}
-}
-
-// MEMORIA LOCAL DEL TELÉFONO
-// Tres cosas, todas pequeñas:
-// 1) br_votos: calificaciones del usuario (para la lista del perfil)
-// 2) br_perm: historias PERMANENTES (calificadas o terminadas) como mapa de bits en base64
-// 3) br_leidas: las últimas MAX_LEIDAS historias mostradas (memoria corta)
-// Historias, capítulos, votos totales y promedio se piden a Supabase cada vez que se muestran.
-const CLAVE_VOTOS = 'br_votos';
-const MAX_VOTOS_GUARDADOS = 10000; // ~1,2 MB en el teléfono; al pasar de 10.000 se borra la más antigua de la lista
-
-// HISTORIAS PERMANENTES: calificadas o terminadas (llegó al final)
-// Un bit por historia (el bit número n se enciende cuando la historia n queda terminada o calificada).
-// Se envía a Supabase como un solo texto base64 (~170 bytes para 1000 historias) y la base
-// NUNCA vuelve a recomendar esas historias mientras existan otras. Lo que SUBE no cuenta como egreso.
-const CLAVE_PERM = 'br_perm';
-const MAX_N_PERM = 20000; // tope de seguridad: el texto guardado nunca pasa de ~34 KB
-
-function leerPermBytes() {
-try {
-const bin = atob(localStorage.getItem(CLAVE_PERM) || '');
-const bytes = new Uint8Array(bin.length);
-for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-return bytes;
-} catch (e) { return new Uint8Array(0); }
-}
-
-function marcarPermanente(n) {
-if (!Number.isInteger(n) || n < 0 || n > MAX_N_PERM) return;
-try {
-const viejo = leerPermBytes();
-if (n >> 3 < viejo.length && (viejo[n >> 3] & (1 << (n & 7)))) return; // ya estaba marcada
-const bytes = new Uint8Array(Math.max(viejo.length, (n >> 3) + 1));
-bytes.set(viejo);
-bytes[n >> 3] |= (1 << (n & 7)); // mismo orden de bits que get_bit de Postgres
-let s = '';
-for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-localStorage.setItem(CLAVE_PERM, btoa(s));
-} catch (e) {}
-}
-
-// Inverso de marcarPermanente: la historia vuelve a poder recomendarse.
-// Se usa cuando una calificación se elimina o sale del historial por el tope.
-function desmarcarPermanente(n) {
-if (!Number.isInteger(n) || n < 0 || n > MAX_N_PERM) return;
-try {
-const bytes = leerPermBytes();
-if ((n >> 3) >= bytes.length || !(bytes[n >> 3] & (1 << (n & 7)))) return; // no estaba
-bytes[n >> 3] &= ~(1 << (n & 7));
-let fin = bytes.length;
-while (fin > 0 && bytes[fin - 1] === 0) fin--; // quita los bytes vacíos del final
-let s = '';
-for (let i = 0; i < fin; i++) s += String.fromCharCode(bytes[i]);
-if (fin === 0) localStorage.removeItem(CLAVE_PERM); else localStorage.setItem(CLAVE_PERM, btoa(s));
-} catch (e) {}
-}
-
-function textoPermanentes() {
-try { return localStorage.getItem(CLAVE_PERM) || ''; } catch (e) { return ''; }
-}
-
-// MEMORIA CORTA: últimas historias mostradas
-// Solo las últimas MAX_LEIDAS: así lo que el lector pasó con las flechas sin leer
-// puede volver a aparecer más adelante. Viaja a Supabase con cada petición de historia nueva.
-const CLAVE_LEIDAS = 'br_leidas';
-const MAX_LEIDAS = 60;
-function cargarLeidas() {
-try {
-const a = JSON.parse(localStorage.getItem(CLAVE_LEIDAS) || '[]');
-return Array.isArray(a) ? a.filter(Number.isInteger).slice(-MAX_LEIDAS) : [];
-} catch (e) { return []; }
-}
-function guardarLeidas() {
-try { localStorage.setItem(CLAVE_LEIDAS, JSON.stringify(leidas)); } catch (e) {}
-}
-// Anota una historia como mostrada (queda como la más reciente de la lista)
-function marcarLeida(n) {
-if (!Number.isInteger(n)) return;
-leidas = leidas.filter(x => x !== n);
-leidas.push(n);
-if (leidas.length > MAX_LEIDAS) leidas = leidas.slice(leidas.length - MAX_LEIDAS);
-guardarLeidas();
-}
-let leidas = cargarLeidas();
-
-// Calificaciones del usuario: historia -> { e: estrellas, t: título, a: autor, n: número }
-// (las guardadas por versiones anteriores eran solo el número de estrellas; también se leen)
-function leerVotos() {
-try { return JSON.parse(localStorage.getItem(CLAVE_VOTOS) || '{}') || {}; } catch (e) { return {}; }
-}
-function escribirVotos(v) {
-try { localStorage.setItem(CLAVE_VOTOS, JSON.stringify(v)); } catch (e) {}
-}
-function estrellasDe(x) {
-return typeof x === 'number' ? x : ((x && x.e) || 0);
-}
-// Calificación que este usuario dio a una historia (0 si no ha votado)
-function votoLocal(hId) {
-return estrellasDe(leerVotos()[hId]);
-}
-function guardarVotoLocal(hId, estrellas, titulo, autor, n) {
-const v = leerVotos();
-delete v[hId];
-v[hId] = { e: estrellas, t: titulo || '', a: autor || '', n: Number.isInteger(n) ? n : null };
-const claves = Object.keys(v);
-if (claves.length > MAX_VOTOS_GUARDADOS) {
-// Las calificaciones más antiguas salen del historial y esas historias vuelven a poder recomendarse
-claves.slice(0, claves.length - MAX_VOTOS_GUARDADOS).forEach(k => {
-const x = v[k];
-if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
-delete v[k];
-});
-}
-escribirVotos(v);
-}
-function eliminarVotoLocal(hId) {
-const v = leerVotos();
-const x = v[hId];
-delete v[hId];
-escribirVotos(v);
-// Quien elimina una calificación quiere poder volver a leerla y calificarla:
-// la historia vuelve a poder recomendarse
-if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
-}
-
-// Si la calificación se guardó sin título/autor/número (versión anterior), se completa al ver la historia.
-// Una historia calificada siempre queda como permanente (nunca se vuelve a recomendar).
-function completarDatosVotoLocal(hId, titulo, autor, n) {
-const v = leerVotos();
-const x = v[hId];
-if (x === undefined) return;
-if (Number.isInteger(n)) marcarPermanente(n);
-const nGuardado = (typeof x === 'object' && Number.isInteger(x.n)) ? x.n : null;
-const nNuevo = Number.isInteger(n) ? n : nGuardado;
-if (typeof x === 'object' && (x.t !== titulo || x.a !== autor || nGuardado !== nNuevo)) {
-v[hId] = { e: estrellasDe(x), t: titulo || '', a: autor || '', n: nNuevo };
-escribirVotos(v);
-}
-}
-
-// Lista de calificaciones: la calificada más recientemente sale primero.
-// El orden de las claves del objeto es el orden en que se calificó (guardar VotoLocal borra la clave
-// y la vuelve a agregar al final), así que basta invertirlo: no hay que ordenar nada y es
-// instantáneo incluso con 10.000 calificaciones.
-function listarCalificaciones() {
-const v = leerVotos();
-const lista = [];
-const ids = Object.keys(v).reverse();
-for (const id of ids) {
-const x = v[id];
-const estrellas = Math.min(5, Math.max(0, estrellasDe(x)));
-if (estrellas < 1) continue;
-let titulo = x && x.t;
-if (!titulo) {
-const legible = id.replace(/_/g,' ');
-titulo = legible.charAt(0).toUpperCase() + legible.slice(1);
-}
-lista.push({ id, estrellas, titulo, autor: (x && x.a) || '' });
-}
-return lista;
-}
-
-// VISTA DE PERFIL: libros calificados + buscador
-const CALIFICACIONES_POR_PAGINA = 4;
-let perfilAbierto = false;
-let paginaPerfil = 0;
-let calificacionPorEliminar = null;
-
-function pintarPerfil() {
-const lista = listarCalificaciones();
-const ultimaPagina = Math.max(0, Math.ceil(lista.length / CALIFICACIONES_POR_PAGINA) - 1);
-if (paginaPerfil > ultimaPagina) paginaPerfil = ultimaPagina;
-if (paginaPerfil < 0) paginaPerfil = 0;
-const cont = document.getElementById('lista-calificaciones');
-cont.innerHTML = '';
-if (lista.length === 0) {
-const vacio = document.createElement('div');
-vacio.className = 'rating-empty';
-vacio.textContent = 'Aún no has calificado ninguna historia.';
-cont.appendChild(vacio);
-}
-const desde = paginaPerfil * CALIFICACIONES_POR_PAGINA;
-lista.slice(desde, desde + CALIFICACIONES_POR_PAGINA).forEach(c => {
-const fila = document.createElement('div');
-fila.className = 'rating-row';
-const info = document.createElement('div');
-info.className = 'rating-info';
-const t = document.createElement('div');
-t.className = 'rating-title';
-t.textContent = c.titulo;
-info.appendChild(t);
-if (c.autor) {
-const a = document.createElement('div');
-a.className = 'rating-author';
-a.textContent = `Autor: ${c.autor}`;
-info.appendChild(a);
-}
-const est = document.createElement('div');
-est.className = 'rating-stars';
-est.textContent = '★'.repeat(c.estrellas) + '☆'.repeat(5 - c.estrellas);
-const x = document.createElement('button');
-x.className = 'rating-delete';
-x.setAttribute('aria-label', 'Eliminar calificación');
-x.textContent = '×';
-x.onclick = () => pedirConfirmacionEliminar(c);
-// Al tocar el nombre de la obra o el autor, se abre esa historia
-info.onclick = () => abrirHistoriaCalificada(c.id);
-fila.appendChild(info);
-fila.appendChild(est);
-fila.appendChild(x);
-cont.appendChild(fila);
-});
-const pag = document.getElementById('perfil-paginacion');
-if (lista.length > CALIFICACIONES_POR_PAGINA) {
-pag.style.display = 'flex';
-document.getElementById('perfil-prev').style.visibility = paginaPerfil > 0 ? 'visible' : 'hidden';
-document.getElementById('perfil-next').style.visibility = paginaPerfil < ultimaPagina ? 'visible' : 'hidden';
-} else {
-pag.style.display = 'none';
-}
-}
-
-function cambiarPaginaPerfil(direccion) {
-paginaPerfil += direccion;
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-pintarPerfil();
-}
-
-function abrirVistaPerfil() {
-perfilAbierto = true;
-paginaPerfil = 0;
-pintarPerfil();
-document.getElementById('vista-lectura').style.display = 'none';
-document.getElementById('vista-perfil').style.display = 'flex';
-const b = document.getElementById('btn-perfil');
-b.classList.add('activo');
-b.setAttribute('aria-pressed', 'true');
-}
-
-function cerrarVistaPerfil() {
-if (!perfilAbierto) return;
-perfilAbierto = false;
-document.getElementById('vista-perfil').style.display = 'none';
-document.getElementById('vista-lectura').style.display = '';
-const b = document.getElementById('btn-perfil');
-b.classList.remove('activo');
-b.setAttribute('aria-pressed', 'false');
-refrescarBloqueVotacion(); // por si se eliminó la calificación de la historia que se estaba leyendo
-}
-
-function alternarVistaPerfil() {
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-if (perfilAbierto) cerrarVistaPerfil(); else abrirVistaPerfil();
-}
-
-// Abre una historia ya calificada desde la lista del perfil
-async function abrirHistoriaCalificada(hId) {
-if (abrirHistoriaCalificada.enCurso) return; // evita toques repetidos
-abrirHistoriaCalificada.enCurso = true;
-try {
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-limpiarBuscador();
-const data = await cargarHistoriaPorId(hId);
-if (!data) {
-if (tg.showAlert) { try { tg.showAlert('No se pudo abrir esta historia.'); } catch (e) {} }
-return;
-}
-registrarEnHistorial(data.historia_id, data.n);
-await mostrarHistoria(data); // cierra el perfil y abre la historia desde el capítulo 1
-} finally {
-abrirHistoriaCalificada.enCurso = false;
-}
-}
-
-function pedirConfirmacionEliminar(c) {
-calificacionPorEliminar = c.id;
-document.getElementById('modal-libro').textContent = c.titulo;
-document.getElementById('modal-confirmar').style.display = 'flex';
-}
-
-function cerrarModalConfirmar() {
-document.getElementById('modal-confirmar').style.display = 'none';
-calificacionPorEliminar = null;
-}
-
-function confirmarEliminarCalificacion() {
-const id = calificacionPorEliminar;
-cerrarModalConfirmar();
-if (!id) return;
-eliminarVotoLocal(id); // la historia vuelve a poder recomendarse
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-pintarPerfil();
-if (id === historiaActualId) refrescarBloqueVotacion();
-}
-
-// Bloque de votación del final de la historia: estrellas para votar, o la calificación ya dada
-function htmlBloqueVotacion(hId) {
-const voto = votoLocal(hId);
-return voto ? `
-<div class="rating-box" id="seccion-votacion-estrellas">
-<div style="font-weight: bold; font-size: 14px;">Tu calificación</div>
-<div class="stars-display" style="font-size: 28px; letter-spacing: 4px;">${'★'.repeat(voto)}${'☆'.repeat(5 - voto)}</div>
-<div style="font-size: 13px;">Votaste ${voto} ${voto === 1 ? 'estrella' : 'estrellas'}</div>
-</div>` : `
-<div class="rating-box" id="seccion-votacion-estrellas">
-<div style="font-weight: bold; font-size: 14px;">¿Qué te pareció la historia?</div>
-<div class="interactive-stars" id="star-selector">
-<span onclick="registrarVotoEstrellas(1)">★</span><span onclick="registrarVotoEstrellas(2)">★</span><span onclick="registrarVotoEstrellas(3)">★</span><span onclick="registrarVotoEstrellas(4)">★</span><span onclick="registrarVotoEstrellas(5)">★</span>
-</div>
-</div>`;
-}
-
-function refrescarBloqueVotacion() {
-const caja = document.getElementById('seccion-votacion-estrellas');
-if (!caja) return;
-const t = document.createElement('div');
-t.innerHTML = htmlBloqueVotacion(historiaActualId).trim();
-caja.replaceWith(t.firstElementChild);
-}
-
-// Borra TODO lo que la app guardó en el teléfono, incluidas las calificaciones.
-// Se activa abriendo la app con el enlace https://t.me/BetaReadsBot?startapp=limpiar
-function borrarMemoriaLocal() {
-try {
-const claves = [];
-for (let i = 0; i < localStorage.length; i++) {
-const k = localStorage.key(i);
-if (k && k.startsWith('br')) claves.push(k);
-}
-claves.forEach(k => localStorage.removeItem(k));
-} catch (e) {}
-leidas = [];
-historialIds = [];
-indiceHistorial = -1;
-cacheHistorias.clear();
-if (tg.showAlert) { try { tg.showAlert('Memoria local borrada.'); } catch (e) {} }
-}
-
-// Al arrancar: elimina lo que guardaron versiones anteriores (historias, capítulos, vistas)
-// y conserva únicamente las calificaciones, las historias permanentes y la memoria corta.
-function limpiarMemoriaAntigua() {
-try {
-const borrar = [];
-for (let i = 0; i < localStorage.length; i++) {
-const k = localStorage.key(i);
-if (k && k.startsWith('br') && k !== CLAVE_VOTOS && k !== CLAVE_LEIDAS && k !== CLAVE_PERM) borrar.push(k);
-}
-borrar.forEach(k => localStorage.removeItem(k));
-} catch (e) {}
-}
-
-const listaMusica = [
-"audio/11145955-mesa-10550.mp3",
-"audio/40173586-magic-forest-473582.mp3",
-"audio/amarantamusic-i-give-you-my-heart-109346.mp3",
-"audio/koto-japan-soundtrack-anime-background-japanese-aikoto-10-470649.mp3",
-"audio/leberch-fear-525004.mp3",
-"audio/leberch-reading-books-590361.mp3",
-"audio/pianocafe_kumi-japanese-piano-568759.mp3",
-"audio/renilsonb-fjord-nordic-545826.mp3",
-"audio/the_mountain-suspense-cyberpunk-375986.mp3",
-"audio/theojt-dark-ambient-121126.mp3"
-];
-let indicePistaActual = listaMusica.indexOf("audio/leberch-reading-books-590361.mp3");
-if (indicePistaActual === -1) indicePistaActual = 0;
-
-function reproducirPistaPredeterminada() {
-const audio = document.getElementById('bg-music');
-if (listaMusica.length > 0) {
-audio.src = listaMusica[indicePistaActual];
-audio.loop = true;
-audio.load();
-audio.play().catch(err => console.log("Error al reproducir pista predeterminada:", err));
-}
-}
-
-function cambiarPistaManual(direccion) {
-const audio = document.getElementById('bg-music');
-const text = document.getElementById('music-text');
-if (listaMusica.length === 0) return;
-indicePistaActual = (indicePistaActual + direccion + listaMusica.length) % listaMusica.length;
-audio.src = listaMusica[indicePistaActual];
-audio.loop = true;
-audio.load();
-audio.play().then(() => {
-text.innerText = "Música: On";
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-}).catch(err => console.log("Error al cambiar pista manualmente:", err));
-}
-
-function toggleMusicaAleatoria() {
-const audio = document.getElementById('bg-music');
-const text = document.getElementById('music-text');
-if (audio.paused) {
-if (!audio.src || audio.src === '' || audio.src === window.location.href) {
-reproducirPistaPredeterminada();
-}
-audio.play().catch(err => console.log("Error al reproducir audio:", err));
-text.innerText = "Música: On";
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-} else {
-audio.pause();
-text.innerText = "Música: Off";
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-}
-}
-
-// Buscador paginado: máximo 4 resultados por página (la función buscar_historias de Supabase
-// hace el trabajo: ignora mayúsculas y tildes, usa índices y avisa si hay página siguiente).
-const MIN_CARACTERES_BUSQUEDA = 3;
-let terminoBusqueda = '';
-let paginaBusqueda = 0;
-let buscandoPagina = false;
-
-function escaparHtml(t) {
-return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function limpiarBuscador() {
-const input = document.getElementById('input-busqueda');
-const resultados = document.getElementById('search-results');
-if (input) input.value = '';
-if (resultados) resultados.innerHTML = '';
-const paginacion = document.getElementById('search-pagination');
-if (paginacion) paginacion.style.display = 'none';
-terminoBusqueda = '';
-paginaBusqueda = 0;
-}
-
-async function buscarHistoriaSupabase() {
-const texto = document.getElementById('input-busqueda').value.trim();
-const contenedorResultados = document.getElementById('search-results');
-contenedorResultados.innerHTML = '';
-document.getElementById('search-pagination').style.display = 'none';
-if (texto.length < MIN_CARACTERES_BUSQUEDA) {
-contenedorResultados.innerHTML = `<div style="text-align: center; color: #666; font-size: 12px; padding: 4px;">Escribe al menos ${MIN_CARACTERES_BUSQUEDA} letras del título o del autor.</div>`;
-return;
-}
-terminoBusqueda = texto;
-paginaBusqueda = 0;
-await mostrarPaginaBusqueda();
-}
-
-async function cambiarPaginaBusqueda(direccion) {
-const nuevaPagina = paginaBusqueda + direccion;
-if (buscandoPagina || !terminoBusqueda || nuevaPagina < 0) return;
-paginaBusqueda = nuevaPagina;
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-await mostrarPaginaBusqueda();
-}
-
-async function mostrarPaginaBusqueda() {
-if (buscandoPagina) return; // evita toques repetidos mientras carga
-buscandoPagina = true;
-try {
-const texto = terminoBusqueda;
-const contenedorResultados = document.getElementById('search-results');
-const paginacion = document.getElementById('search-pagination');
-const { data: res, error } = await supabaseClient
-.rpc('buscar_historias', { p_texto: texto, p_pagina: paginaBusqueda });
-contenedorResultados.innerHTML = '';
-paginacion.style.display = 'none';
-if (error || !res) {
-console.error("Error en búsqueda:", error);
-contenedorResultados.innerHTML = `<div style="text-align: center; color: #d9534f; font-size: 12px; padding: 4px;">Ocurrió un error al realizar la búsqueda.</div>`;
-return;
-}
-const data = (res && res.items) ? res.items : [];
-if (data.length > 0) {
-const hayMas = !!res.hay_mas;
-data.forEach(libro => {
-const item = document.createElement('div');
-item.className = 'search-result-item';
-item.innerHTML = `
-<div>
-<div style="font-weight: bold; color: #2481cc;">${escaparHtml(libro.titulo_historia)}</div>
-<div style="font-size: 11px; color: #666;">Autor: ${escaparHtml(libro.autor || 'Desconocido')}</div>
-</div>
-<span style="font-size: 12px; font-weight: bold; color: #28a745;">Leer →</span>`;
-item.onclick = async () => {
-historiaActualId = libro.historia_id;
-capituloActualId = 'cap_1';
-pasoActualIndex = 0;
-limpiarBuscador();
-document.getElementById('progress-bars-container').style.display = 'flex';
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-const historiaCargada = await cargarConfiguracionHistoria(historiaActualId);
-if (historiaCargada) {
-registrarEnHistorial(historiaCargada.historia_id, historiaCargada.n);
-cerrarVistaPerfil(); // vuelve a la lectura con la historia elegida
-await cargarCapitulo(capituloActualId, historiaCargada && historiaCargada.cap_1);
-}
-};
-contenedorResultados.appendChild(item);
-});
-// Las flechas solo aparecen si hay más de 4 resultados en total
-if (paginaBusqueda > 0 || hayMas) {
-paginacion.style.display = 'flex';
-document.getElementById('search-prev').style.visibility = paginaBusqueda > 0 ? 'visible' : 'hidden';
-document.getElementById('search-next').style.visibility = hayMas ? 'visible' : 'hidden';
-}
-} else {
-contenedorResultados.innerHTML = `<div style="text-align: center; color: #856404; font-size: 12px; padding: 8px; background: #fff3cd; border-radius: 6px;">No encontramos este título o autor. ¡Pronto podríamos agregarlo!</div>`;
-}
-} finally {
-buscandoPagina = false;
-}
-}
-
-// Pregunta antes de borrar todo (enlace ?startapp=limpiar). Devuelve true solo si el usuario pulsa "Eliminar".
-function confirmarBorradoTotal() {
-return new Promise(resolve => {
-const mensaje = '¿Estás seguro de que deseas eliminar todo tu historial de lecturas y tus calificaciones guardadas? Esta acción no se puede deshacer.';
-try {
-if (typeof tg.showPopup === 'function') {
-tg.showPopup({
-title: 'Eliminar historial',
-message: mensaje,
-buttons: [
-{ id: 'eliminar', type: 'destructive', text: 'Eliminar' },
-{ id: 'cancelar', type: 'default', text: 'Cancelar' }
-]
-}, (idBoton) => resolve(idBoton === 'eliminar'));
-return;
-}
-} catch (e) {}
-resolve(window.confirm(mensaje));
-});
-}
-
-async function verificarParametroHistoria() {
-const params = new URLSearchParams(window.location.search);
-let historiaParam = params.get('historia') || params.get('startapp');
-if (!historiaParam && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-historiaParam = tg.initDataUnsafe.start_param;
-}
-if (historiaParam === 'limpiar') { // palabra reservada: pide confirmación, borra la memoria local y abre una historia al azar
-if (await confirmarBorradoTotal()) borrarMemoriaLocal();
-historiaParam = '';
-}
-if (historiaParam) {
-historiaActualId = historiaParam;
-}
-}
-
-// Mezcla Fisher-Yates: cada orden posible tiene la misma probabilidad
-function barajarArreglo(array) {
-let arr = [...array];
-for (let i = arr.length - 1; i > 0; i--) {
-const j = Math.floor(Math.random() * (i + 1));
-[arr[i], arr[j]] = [arr[j], arr[i]];
-}
-return arr;
-}
-
-function obtenerIndicePorIdCapitulo(idCap) {
-if (idCap === 'fin' || idCap.includes('epilogo')) return totalPasosHistoria - 1;
-const match = idCap.match(/\d+/);
-if (match) {
-const num = parseInt(match[0], 10);
-return Math.min(totalPasosHistoria - 1, Math.max(0, num - 1));
-}
-return pasoActualIndex;
-}
-
-function actualizarBarritasProgreso() {
-const contenedor = document.getElementById('progress-bars-container');
-let htmlBarritas = '';
-for (let i = 0; i < totalPasosHistoria; i++) {
-let claseActiva = i <= pasoActualIndex ? 'bar active' : 'bar';
-htmlBarritas += `<div class="${claseActiva}"></div>`;
-}
-contenedor.innerHTML = htmlBarritas;
-}
-
-// SELECCIÓN PONDERADA (40% recientes / 60% resto)
-// La elección se hace dentro de Supabase (función obtener_historia_no_leida):
-// UNA sola petición por historia nueva, nunca se descarga la lista de historias.
-// Prioridad en la base: 1) ni permanente ni reciente, 2) no permanente (la vista hace más tiempo),
-// 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo).
-// n = número de la historia (lo trae la respuesta de Supabase); se anota en la memoria corta
-function registrarEnHistorial(id, n) {
-historialIds = historialIds.slice(0, indiceHistorial + 1);
-historialIds.push(id);
-if (historialIds.length > MAX_HISTORIAL) historialIds.shift();
-indiceHistorial = historialIds.length - 1;
-marcarLeida(n);
-}
-
-// Pide una historia nueva con respaldos graduales para evitar que se descarte en catálogos pequeños
-async function pedirHistoriaPonderada() {
-  // 1. Intento principal: prioriza historias no calificadas/no terminadas y no recientes
-  let { data, error } = await supabaseClient
-    .rpc('obtener_historia_no_leida', { p_perm: textoPermanentes(), p_recientes: leidas });
-
-  // 2. Si no hay datos (catálogo pequeño donde todas están calificadas o terminadas),
-  // permitimos recomendar también las permanentes pero manteniendo el filtro de recientes si es posible
-  if (error || !data) {
-    const res2 = await supabaseClient
-      .rpc('obtener_historia_no_leida', { p_perm: "", p_recientes: leidas });
-    data = res2.data;
-  }
-
-  // 3. Fallback total: catálogo muy pequeño donde todas están en leidas y permanentes,
-  // permitiendo cualquier historia para asegurar que NUNCA desaparezcan del panel superior
-  if (!data) {
-    const res3 = await supabaseClient
-      .rpc('obtener_historia_no_leida', { p_perm: "", p_recientes: [] });
-    data = res3.data;
-  }
-
-  if (!data) return null;
-  guardarEnCache(data);
-  return data;
-}
-
-// Historia concreta (ir atrás/adelante, perfil, enlaces): primero la caché en memoria (egreso cero);
-// si no está, se pide completa a Supabase
-async function cargarHistoriaPorId(hId) {
-const enCache = cacheHistorias.get(hId);
-if (enCache) return enCache;
-const { data, error } = await supabaseClient
-.rpc('obtener_historia', { p_historia: hId });
-if (error || !data) return null;
-guardarEnCache(data);
-return data;
-}
-
-async function mostrarHistoria(data) {
-cerrarVistaPerfil();
-historiaActualId = data.historia_id;
-capituloActualId = 'cap_1';
-pasoActualIndex = 0;
-document.getElementById('progress-bars-container').style.display = 'flex';
-aplicarConfigHistoria(data);
-await cargarCapitulo('cap_1', data.cap_1);
-}
-
-async function cambiarHistoriaAdyacente(direccion) {
-if (cambiarHistoriaAdyacente.enCurso) return; // evita clics solapados
-cambiarHistoriaAdyacente.enCurso = true;
-try {
-limpiarBuscador();
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-let data = null;
-// Ir atrás/adelante dentro de lo ya visto: sale de la caché (o de Supabase si ya no está en caché)
-const destino = indiceHistorial + direccion;
-if (destino >= 0 && destino < historialIds.length) {
-data = await cargarHistoriaPorId(historialIds[destino]);
-if (data) indiceHistorial = destino;
-}
-// Historia nueva (o la anterior ya no está disponible)
-if (!data) {
-data = await pedirHistoriaPonderada();
-if (!data) return; // no hay otra historia a la que ir
-}
-registrarEnHistorial(data.historia_id, data.n);
-await mostrarHistoria(data);
-} finally {
-cambiarHistoriaAdyacente.enCurso = false;
-}
-}
-
-// Pinta título, autor, total de capítulos y estrellas con los datos que ya trae la historia
-function aplicarConfigHistoria(h) {
-autorActualNombre = h.autor || 'Desconocido';
-tituloActual = h.titulo_historia || '';
-nActual = Number.isInteger(h.n) ? h.n : null;
-completarDatosVotoLocal(h.historia_id, tituloActual, autorActualNombre, nActual);
-if (h.total_capitulos && h.total_capitulos > 0) {
-totalPasosHistoria = h.total_capitulos;
-}
-document.getElementById('story-title-author').innerText = h.titulo_historia;
-document.getElementById('story-author-name').innerText = `Autor: ${autorActualNombre}`;
-pintarEstadisticas(h.votos, h.suma);
-}
-
-// Configuración + estadísticas + capítulo 1 de una historia concreta (de la caché o de UNA petición)
-async function cargarConfiguracionHistoria(hId) {
-const data = await cargarHistoriaPorId(hId);
-if (!data) return null;
-aplicarConfigHistoria(data);
-return data;
-}
-
-function pintarEstadisticas(votos, suma) {
-let totalVotos = votos || 0;
-let sumaEstrellas = suma || 0;
-let promedio = totalVotos > 0 ? (sumaEstrellas / totalVotos).toFixed(1) : '0.0';
-document.getElementById('avg-rating-num').innerText = promedio;
-document.getElementById('total-ratings-count').innerText = `(${totalVotos})`;
-let numEstrellasEnteras = Math.round(parseFloat(promedio));
-let estrellasStr = '★'.repeat(numEstrellasEnteras) + '☆'.repeat(5 - numEstrellasEnteras);
-document.getElementById('avg-stars-icon').innerText = estrellasStr;
-}
-
-async function registrarVotoEstrellas(calificacion) {
-if (registrarVotoEstrellas.enCurso || votoLocal(historiaActualId)) return; // evita votos dobles
-registrarVotoEstrellas.enCurso = true;
-try {
-const hVotada = historiaActualId;
-const nVotada = nActual;
-const tVotada = tituloActual, aVotada = autorActualNombre;
-// El voto se suma de forma atómica en la base (función votar_estrellas)
-const { data, error } = await supabaseClient
-.rpc('votar_estrellas', { p_historia: hVotada, p_estrellas: calificacion });
-if (error || !data) {
-console.error("Error al registrar voto:", error);
-return;
-}
-// Recordar SOLO la calificación del usuario en el teléfono (y marcarla como permanente)
-guardarVotoLocal(hVotada, calificacion, tVotada, aVotada, nVotada);
-marcarPermanente(nVotada);
-// La caché también debe mostrar el promedio nuevo si el lector vuelve a esta historia
-const enCache = cacheHistorias.get(hVotada);
-if (enCache) { enCache.votos = data.votos; enCache.suma = data.suma; }
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-const contenedorVoto = document.getElementById('seccion-votacion-estrellas');
-if (contenedorVoto) {
-contenedorVoto.innerHTML = `<div style="font-weight: bold; color: #28a745; padding: 10px;">¡Gracias por tu voto de ${calificacion} estrellas!</div>`;
-}
-pintarEstadisticas(data.votos, data.suma);
-} finally {
-registrarVotoEstrellas.enCurso = false;
-}
-}
-
-async function iniciarApp() {
-const telegramUser = tg.initDataUnsafe?.user;
-const params = new URLSearchParams(window.location.search);
-const startParam = tg.initDataUnsafe?.start_param;
-if ((!telegramUser || !telegramUser.id) && !params.get('historia') && !params.get('startapp') && !startParam) {
-document.getElementById('app').innerHTML = `
-<div class="blocked-card">
-<h3>Acceso Restringido</h3>
-<p>Abre esta Mini App directamente desde Telegram.</p>
-</div>`;
-return;
-}
-await verificarParametroHistoria();
-let historiaPrecargada = null;
-if (!historiaActualId) {
-// Una sola petición: trae solo UNA historia nueva (selección ponderada 40/60, sin repetir permanentes)
-const data = await pedirHistoriaPonderada();
-if (data) {
-historiaActualId = data.historia_id;
-historiaPrecargada = data;
-}
-}
-if (!historiaActualId) {
-document.getElementById('app').innerHTML = `
-<div class="blocked-card">
-<h3>No hay historias disponibles</h3>
-<p>Vuelve más tarde para disfrutar de nuevas aventuras.</p>
-</div>`;
-return;
-}
-pasoActualIndex = 0;
-if (historiaPrecargada) {
-aplicarConfigHistoria(historiaPrecargada);
-} else {
-historiaPrecargada = await cargarConfiguracionHistoria(historiaActualId);
-if (!historiaPrecargada) {
-// Enlace a una historia privada o inexistente: mostrar otra
-historiaPrecargada = await pedirHistoriaPonderada();
-if (historiaPrecargada) {
-historiaActualId = historiaPrecargada.historia_id;
-aplicarConfigHistoria(historiaPrecargada);
-}
-}
-}
-if (historiaPrecargada) registrarEnHistorial(historiaPrecargada.historia_id, historiaPrecargada.n);
-await cargarCapitulo(capituloActualId, historiaPrecargada && historiaPrecargada.cap_1);
-limpiarMemoriaAntigua();
-}
-
-setTimeout(iniciarApp, 500);
-
-async function cargarCapitulo(idCapitulo, capituloPrecargado) {
-opcionSeleccionada = null; // capítulo nuevo: ninguna opción marcada
-document.getElementById('hint-row').style.display = 'flex';
-document.getElementById('btn_next').style.display = 'none';
-document.getElementById('hint-siguiente').style.display = 'block';
-document.getElementById('btn-compartir-icono').style.display = 'flex';
-document.getElementById('progress-bars-container').style.display = 'flex';
-pasoActualIndex = obtenerIndicePorIdCapitulo(idCapitulo);
-actualizarBarritasProgreso();
-
-// Capítulo + opciones en UNA sola petición (o ya vienen incluidos con la historia)
-const hId = historiaActualId;
-const nDeEstaHistoria = nActual;
-let capData = capituloPrecargado;
-if (!capData) {
-const { data, error } = await supabaseClient
-.rpc('obtener_capitulo', { p_historia: hId, p_capitulo: idCapitulo });
-if (error || !data) return false; // no se toca imagen ni texto
-capData = data;
-}
-
-// La imagen cambia junto con el texto, cuando el capítulo ya está listo
-document.getElementById('imagen').src = 'https://picsum.photos/400/200?random=' + Math.random();
-
-const capituloData = capData;
-const opcionesValidas = capData.opciones || [];
-const opcionesList = capData.siguiente_por_defecto ? [{ siguiente_capitulo: capData.siguiente_por_defecto }] : [];
-const elementoTitulo = document.getElementById('titulo');
-if (capituloData.titulo && capituloData.titulo.trim() !== '') {
-elementoTitulo.innerText = capituloData.titulo;
-elementoTitulo.style.display = 'block';
-} else {
-elementoTitulo.innerText = '';
-elementoTitulo.style.display = 'none';
-}
-document.getElementById('pregunta').innerText = capituloData.descripcion;
-
-const contenedorOpciones = document.getElementById('opciones-container');
-contenedorOpciones.innerHTML = '';
-
-let esFinal = (idCapitulo === 'fin' || idCapitulo.includes('epilogo'));
-if (!esFinal && opcionesValidas.length === 0) {
-let siguienteDestino = 'cap_' + (pasoActualIndex + 2);
-if (opcionesList && opcionesList.length > 0 && opcionesList[0].siguiente_capitulo) {
-siguienteDestino = opcionesList[0].siguiente_capitulo;
-}
-if (siguienteDestino === 'fin' || siguienteDestino.includes('epilogo')) {
-esFinal = true;
-}
-}
-
-if (esFinal) {
-marcarPermanente(nDeEstaHistoria); // llegó al final: historia terminada, no se vuelve a recomendar
-pasoActualIndex = totalPasosHistoria - 1;
-actualizarBarritasProgreso();
-document.getElementById('hint-siguiente').style.display = 'none';
-// En el final ya está el botón grande "Compartir Reseña": se oculta el icono para no duplicar
-document.getElementById('btn-compartir-icono').style.display = 'none';
-const bloqueFinal = document.createElement('div');
-bloqueFinal.innerHTML = `
-${htmlBloqueVotacion(hId)}
-<button class="btn btn-share" onclick="compartirReseña()"><span>Compartir</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 9V5h-2v4H8l4 4 4-4h-4z"/></svg></button>
-<div class="donation-box">
-<div class="donation-text">
-Apóyanos ahora mismo enviando un regalo a nuestro canal.
-</div>
-<button class="btn-channel" onclick="abrirCanalRegalos()">Ver Canal</button>
-</div>`;
-contenedorOpciones.appendChild(bloqueFinal);
-return;
-}
-
-if (opcionesValidas.length > 0) {
-// Orden aleatorio distinto en cada capítulo y para cada lector
-const opcionesAleatorias = barajarArreglo(opcionesValidas);
-opcionesAleatorias.forEach((opcion) => {
-const btn = document.createElement('button');
-btn.className = 'btn';
-btn.innerText = opcion.texto_opcion;
-btn.onclick = () => procesarSeleccionOpcion(opcion, btn);
-contenedorOpciones.appendChild(btn);
-});
-} else {
-document.getElementById('hint-siguiente').style.display = 'none';
-const btnNext = document.getElementById('btn_next');
-btnNext.style.display = 'block';
-let siguienteDestino = 'cap_' + (pasoActualIndex + 2);
-if (opcionesList && opcionesList.length > 0 && opcionesList[0].siguiente_capitulo) {
-siguienteDestino = opcionesList[0].siguiente_capitulo;
-}
-btnNext.onclick = () => {
-pasoActualIndex = obtenerIndicePorIdCapitulo(siguienteDestino);
-capituloActualId = siguienteDestino;
-cargarCapitulo(capituloActualId);
-};
-}
-}
-
-// Comparte el enlace directo a la historia: quien lo abra la verá desde el capítulo 1
-function compartirReseña() {
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-const tituloObra = document.getElementById('story-title-author').innerText;
-const botUsername = 'BetaReadsBot';
-const linkDirectoApp = `https://t.me/${botUsername}?startapp=${historiaActualId}`;
-const urlTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(linkDirectoApp)}&text=${encodeURIComponent(`¡Lee "${tituloObra}" en Beta Reads!`)}`;
-if (tg && typeof tg.openTelegramLink === 'function') {
-tg.openTelegramLink(urlTelegramShare);
-} else {
-window.open(urlTelegramShare, '_blank');
-}
-}
-
-// Abre el canal dentro de Telegram (lo usan el botón "Ver Canal" y el enlace @BookBetaReader)
-function abrirCanalRegalos(ev) {
-if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
-if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-const urlCanal = 'https://t.me/BookBetaReader';
-if (tg && typeof tg.openTelegramLink === 'function') {
-tg.openTelegramLink(urlCanal);
-} else {
-window.open(urlCanal, '_blank');
-}
-}
-
-// Tocar una opción la marca y muestra "Siguiente Capítulo".
-// Tocar la MISMA opción otra vez la desmarca y vuelven a quedar todas disponibles (sin cambiar su orden).
-function procesarSeleccionOpcion(opcionElegida, btnElegido) {
-const botones = document.querySelectorAll('#opciones-container .btn');
-const filaHint = document.getElementById('hint-row'); // texto de ayuda + icono de compartir
-const btnNext = document.getElementById('btn_next');
-if (opcionSeleccionada === opcionElegida) {
-opcionSeleccionada = null;
-botones.forEach(b => {
-b.style.display = '';
-b.disabled = false;
-b.classList.remove('btn-seleccionada');
-});
-btnNext.style.display = 'none';
-btnNext.onclick = null;
-filaHint.style.display = 'flex';
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-return;
-}
-opcionSeleccionada = opcionElegida;
-botones.forEach(b => {
-const esLaElegida = (b === btnElegido);
-b.style.display = esLaElegida ? '' : 'none'; // las demás desaparecen
-b.classList.toggle('btn-seleccionada', esLaElegida); // la elegida queda gris y activa para poder desmarcarla
-});
-filaHint.style.display = 'none';
-btnNext.style.display = 'block';
-btnNext.onclick = () => {
-pasoActualIndex = obtenerIndicePorIdCapitulo(opcionElegida.siguiente_capitulo);
-capituloActualId = opcionElegida.siguiente_capitulo;
-cargarCapitulo(capituloActualId);
-};
-if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-}
-</script>
+    <div class="container" id="app">
+        <!-- Panel Superior -->
+        <div class="stats-box" id="stats-panel">
+            <button class="nav-arrow" onclick="cambiarHistoriaAdyacente(-1)">&#10094;</button>
+            <div class="stats-center">
+                <div id="story-title-author" class="story-author-header">Cargando datos</div>
+                <div class="stars-container">
+                    <span id="avg-rating-num">0.0</span>
+                    <span class="stars-display" id="avg-stars-icon">★★★★★</span>
+                    <span id="total-ratings-count">(0)</span>
+                </div>
+                <div id="story-author-name" class="author-name">Autor: Cargando...</div>
+            </div>
+            <button class="nav-arrow" onclick="cambiarHistoriaAdyacente(1)">&#10095;</button>
+        </div>
+        <!-- Reproductor de Música (con el botón de perfil a la izquierda) -->
+        <div class="music-row">
+            <button id="btn-perfil" class="btn-perfil" onclick="alternarVistaPerfil()" aria-label="Mis calificaciones" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8z"/></svg>
+            </button>
+            <div class="music-group">
+                <audio id="bg-music" preload="none" loop></audio>
+                <div class="music-box">
+                    <button class="music-nav-arrow" onclick="cambiarPistaManual(-1)" aria-label="Pista anterior">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="12 6 6 12 12 18"/><polyline points="19 6 13 12 19 18"/></svg>
+                    </button>
+                    <button class="music-toggle" onclick="toggleMusicaAleatoria()">
+                        🎵 <span id="music-text">Música: Off</span>
+                    </button>
+                    <button class="music-nav-arrow" onclick="cambiarPistaManual(1)" aria-label="Pista siguiente">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="12 6 18 12 12 18"/><polyline points="5 6 11 12 5 18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div></div>
+        </div>
+        <!-- Imagen de la escena -->
+        <img id="imagen" alt="Escena" referrerpolicy="no-referrer">
+        <!-- Barritas de Progreso Dinámicas -->
+        <div class="progress-bars" id="progress-bars-container"></div>
+        <!-- Vista de lectura: título, texto y opciones del capítulo -->
+        <div id="vista-lectura" class="vista-grupo">
+            <!-- Título condicional del capítulo/sección -->
+            <div id="titulo" class="title" style="display: none;"></div>
+            <!-- Descripción de la escena -->
+            <div id="pregunta" class="question">Por favor, espera...</div>
+            <!-- Contenedor dinámico de opciones -->
+            <div id="opciones-container" class="options-container"></div>
+            <!-- Texto de ayuda + icono de compartir la historia -->
+            <div class="hint-row" id="hint-row">
+                <div id="hint-siguiente" class="instruction-hint">¡Elige una opción y presiona siguiente!<button id="btn-compartir-icono" class="btn-compartir-icono" onclick="compartirReseña()" aria-label="Compartir esta historia"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></svg></button></div>
+            </div>
+            <button id="btn_next" class="btn btn-next">Siguiente Capítulo ➔</button>
+        </div>
+        <!-- Vista de perfil: libros calificados + buscador (se abre con el botón de perfil) -->
+        <div id="vista-perfil" class="vista-grupo" style="display: none;">
+            <div id="caja-calificaciones" class="stories-box">
+                <div id="lista-calificaciones" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                <div id="perfil-paginacion" style="display: none; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <button id="perfil-prev" class="nav-arrow" onclick="cambiarPaginaPerfil(-1)">&#10094;</button>
+                    <button id="perfil-next" class="nav-arrow" onclick="cambiarPaginaPerfil(1)">&#10095;</button>
+                </div>
+            </div>
+            <div id="otras-historias" class="stories-box">
+                <div class="search-section-footer">
+                    <div class="search-input-group">
+                        <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar libro o autor...">
+                        <button class="search-btn" onclick="buscarHistoriaSupabase()">Buscar</button>
+                    </div>
+                    <div id="search-results" class="search-results"></div>
+                    <div id="search-pagination" style="display: none; justify-content: space-between; align-items: center;">
+                        <button id="search-prev" class="nav-arrow" onclick="cambiarPaginaBusqueda(-1)">&#10094;</button>
+                        <button id="search-next" class="nav-arrow" onclick="cambiarPaginaBusqueda(1)">&#10095;</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Texto de apoyo al proyecto -->
+            <div class="support-note">
+                Para mantener esta Mini App activa requerimos $25/mes en servidores. Apoya el proyecto enviando un regalo a nuestro canal <a href="https://t.me/BookBetaReader" onclick="abrirCanalRegalos(event)">@BookBetaReader</a>.
+            </div>
+        </div>
+    </div>
+    <!-- Cuadro de confirmación para eliminar una calificación -->
+    <div id="modal-confirmar" class="modal-fondo" onclick="if (event.target === this) cerrarModalConfirmar()">
+        <div class="modal-caja">
+            <div class="modal-texto">¿Quieres eliminar esta calificación?</div>
+            <div class="modal-libro" id="modal-libro"></div>
+            <div class="modal-botones">
+                <button class="btn btn-cancelar" onclick="cerrarModalConfirmar()">Cancelar</button>
+                <button class="btn btn-eliminar" onclick="confirmarEliminarCalificacion()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const SUPABASE_URL = 'https://cnhtbdzzcfvrdkqzrfjf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaHRiZHp6Y2Z2cmRrcXpyZmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDUzMTcsImV4cCI6MjEwNzIyMTMxN30.nBKNHG4ArcWkctm8n-rF592wZ2Aa7MG4fS-qswboWD0';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false }
+        });
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        let historiaActualId = '';
+        let nActual = null;          // número (id) de la historia que se está leyendo; lo trae Supabase
+        let capituloActualId = 'cap_1';
+        let totalPasosHistoria = 3;
+        let pasoActualIndex = 0;
+        let autorActualNombre = '';
+        let tituloActual = '';
+        let opcionSeleccionada = null; // opción marcada en el capítulo actual (null = ninguna)
+
+        // Solo en memoria mientras la app está abierta (nada de esto se guarda en el teléfono):
+        let historialIds = [];      // ids de las historias vistas, para las flechas atrás/adelante
+        let indiceHistorial = -1;
+        const MAX_HISTORIAL = 30;
+
+        // Caché en memoria de las últimas historias mostradas: ir atrás/adelante NO vuelve a pedir nada
+        // a Supabase (egreso cero). Se pierde al cerrar la app; no ocupa espacio en el teléfono.
+        const MAX_CACHE = 15;
+        const cacheHistorias = new Map();
+        function guardarEnCache(data) {
+            if (!data || !data.historia_id) return;
+            cacheHistorias.delete(data.historia_id);
+            cacheHistorias.set(data.historia_id, data);
+            while (cacheHistorias.size > MAX_CACHE) {
+                cacheHistorias.delete(cacheHistorias.keys().next().value);
+            }
+        }
+
+        // ---------- MEMORIA LOCAL DEL TELÉFONO ----------
+        // Tres cosas, todas pequeñas:
+        //  1) br_votos : calificaciones del usuario (para la lista del perfil)
+        //  2) br_perm  : historias PERMANENTES (calificadas o terminadas) como mapa de bits en base64
+        //  3) br_leidas: las últimas MAX_LEIDAS historias mostradas (memoria corta)
+        // Historias, capítulos, votos totales y promedio se piden a Supabase cada vez que se muestran.
+        const CLAVE_VOTOS = 'br_votos';
+        const MAX_VOTOS_GUARDADOS = 10000; // ~1,2 MB en el teléfono; al pasar de 10.000 se borra la más antigua de la lista
+
+        // ---------- HISTORIAS PERMANENTES: calificadas o terminadas (llegó al final) ----------
+        // Un bit por historia (el bit número n se enciende cuando la historia n queda terminada o calificada).
+        // Se envía a Supabase como un solo texto base64 (~170 bytes para 1000 historias) y la base
+        // NUNCA vuelve a recomendar esas historias mientras existan otras. Lo que SUBE no cuenta como egreso.
+        // ---------- inicio permanentes ----------
+        const CLAVE_PERM = 'br_perm';
+        const MAX_N_PERM = 200000; // tope de seguridad: el texto guardado nunca pasa de ~34 KB
+        function leerPermBytes() {
+            try {
+                const bin = atob(localStorage.getItem(CLAVE_PERM) || '');
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return bytes;
+            } catch (e) { return new Uint8Array(0); }
+        }
+        function marcarPermanente(n) {
+            if (!Number.isInteger(n) || n < 0 || n > MAX_N_PERM) return;
+            try {
+                const viejo = leerPermBytes();
+                if (n >> 3 < viejo.length && (viejo[n >> 3] & (1 << (n & 7)))) return; // ya estaba marcada
+                const bytes = new Uint8Array(Math.max(viejo.length, (n >> 3) + 1));
+                bytes.set(viejo);
+                bytes[n >> 3] |= (1 << (n & 7)); // mismo orden de bits que get_bit de Postgres
+                let s = '';
+                for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+                localStorage.setItem(CLAVE_PERM, btoa(s));
+            } catch (e) {}
+        }
+        // Inverso de marcarPermanente: la historia vuelve a poder recomendarse.
+        // Se usa cuando una calificación se elimina o sale del historial por el tope.
+        function desmarcarPermanente(n) {
+            if (!Number.isInteger(n) || n < 0 || n > MAX_N_PERM) return;
+            try {
+                const bytes = leerPermBytes();
+                if ((n >> 3) >= bytes.length || !(bytes[n >> 3] & (1 << (n & 7)))) return; // no estaba marcada
+                bytes[n >> 3] &= ~(1 << (n & 7));
+                let fin = bytes.length;
+                while (fin > 0 && bytes[fin - 1] === 0) fin--; // quita los bytes vacíos del final
+                let s = '';
+                for (let i = 0; i < fin; i++) s += String.fromCharCode(bytes[i]);
+                if (fin === 0) localStorage.removeItem(CLAVE_PERM); else localStorage.setItem(CLAVE_PERM, btoa(s));
+            } catch (e) {}
+        }
+        function textoPermanentes() {
+            try { return localStorage.getItem(CLAVE_PERM) || ''; } catch (e) { return ''; }
+        }
+        // ---------- fin permanentes ----------
+
+        // ---------- MEMORIA CORTA: últimas historias mostradas ----------
+        // Solo las últimas MAX_LEIDAS: así lo que el lector pasó con las flechas sin leer
+        // puede volver a aparecer más adelante. Viaja a Supabase con cada petición de historia nueva.
+        const CLAVE_LEIDAS = 'br_leidas';
+        const MAX_LEIDAS = 60;
+        function cargarLeidas() {
+            try {
+                const a = JSON.parse(localStorage.getItem(CLAVE_LEIDAS) || '[]');
+                return Array.isArray(a) ? a.filter(Number.isInteger).slice(-MAX_LEIDAS) : [];
+            } catch (e) { return []; }
+        }
+        function guardarLeidas() {
+            try { localStorage.setItem(CLAVE_LEIDAS, JSON.stringify(leidas)); } catch (e) {}
+        }
+        // Anota una historia como mostrada (queda como la más reciente de la lista)
+        function marcarLeida(n) {
+            if (!Number.isInteger(n)) return;
+            leidas = leidas.filter(x => x !== n);
+            leidas.push(n);
+            if (leidas.length > MAX_LEIDAS) leidas = leidas.slice(leidas.length - MAX_LEIDAS);
+            guardarLeidas();
+        }
+        let leidas = cargarLeidas();
+
+        // Calificaciones del usuario: historia -> { e: estrellas, t: título, a: autor, n: número }
+        // (las guardadas por versiones anteriores eran solo el número de estrellas; también se leen)
+        function leerVotos() {
+            try { return JSON.parse(localStorage.getItem(CLAVE_VOTOS) || '{}') || {}; } catch (e) { return {}; }
+        }
+        function escribirVotos(v) {
+            try { localStorage.setItem(CLAVE_VOTOS, JSON.stringify(v)); } catch (e) {}
+        }
+        function estrellasDe(x) {
+            return typeof x === 'number' ? x : ((x && x.e) || 0);
+        }
+        // Calificación que este usuario dio a una historia (0 si no ha votado)
+        function votoLocal(hId) {
+            return estrellasDe(leerVotos()[hId]);
+        }
+        function guardarVotoLocal(hId, estrellas, titulo, autor, n) {
+            const v = leerVotos();
+            delete v[hId];
+            v[hId] = { e: estrellas, t: titulo || '', a: autor || '', n: Number.isInteger(n) ? n : null };
+            const claves = Object.keys(v);
+            if (claves.length > MAX_VOTOS_GUARDADOS) {
+                // Las calificaciones más antiguas salen del historial y esas historias vuelven a poder recomendarse
+                claves.slice(0, claves.length - MAX_VOTOS_GUARDADOS).forEach(k => {
+                    const x = v[k];
+                    if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
+                    delete v[k];
+                });
+            }
+            escribirVotos(v);
+        }
+        function eliminarVotoLocal(hId) {
+            const v = leerVotos();
+            const x = v[hId];
+            delete v[hId];
+            escribirVotos(v);
+            // Quien elimina una calificación quiere poder volver a leerla y calificarla:
+            // la historia vuelve a poder recomendarse
+            if (x && typeof x === 'object' && Number.isInteger(x.n)) desmarcarPermanente(x.n);
+        }
+        // Si la calificación se guardó sin título/autor/número (versión anterior), se completa al ver la historia.
+        // Una historia calificada siempre queda como permanente (nunca se vuelve a recomendar).
+        function completarDatosVotoLocal(hId, titulo, autor, n) {
+            const v = leerVotos();
+            const x = v[hId];
+            if (x === undefined) return;
+            if (Number.isInteger(n)) marcarPermanente(n);
+            const nGuardado = (typeof x === 'object' && Number.isInteger(x.n)) ? x.n : null;
+            const nNuevo = Number.isInteger(n) ? n : nGuardado;
+            if (typeof x === 'object' && x.t === titulo && x.a === autor && nGuardado === nNuevo) return;
+            v[hId] = { e: estrellasDe(x), t: titulo || '', a: autor || '', n: nNuevo };
+            escribirVotos(v);
+        }
+        // Lista de calificaciones: la calificada más recientemente sale primero.
+        // El orden de las claves del objeto es el orden en que se calificó (guardarVotoLocal borra la clave
+        // y la vuelve a agregar al final), así que basta invertirlo: no hay que ordenar nada y es
+        // instantáneo incluso con 10.000 calificaciones.
+        function listarCalificaciones() {
+            const v = leerVotos();
+            const lista = [];
+            const ids = Object.keys(v).reverse();
+            for (const id of ids) {
+                const x = v[id];
+                const estrellas = Math.min(5, Math.max(0, estrellasDe(x)));
+                if (estrellas < 1) continue;
+                let titulo = x && x.t;
+                if (!titulo) {
+                    const legible = id.replace(/_/g, ' ');
+                    titulo = legible.charAt(0).toUpperCase() + legible.slice(1);
+                }
+                lista.push({ id, estrellas, titulo, autor: (x && x.a) || '' });
+            }
+            return lista;
+        }
+
+        // ---------- VISTA DE PERFIL: libros calificados + buscador ----------
+        const CALIFICACIONES_POR_PAGINA = 4;
+        let perfilAbierto = false;
+        let paginaPerfil = 0;
+        let calificacionPorEliminar = null;
+
+        function pintarPerfil() {
+            const lista = listarCalificaciones();
+            const ultimaPagina = Math.max(0, Math.ceil(lista.length / CALIFICACIONES_POR_PAGINA) - 1);
+            if (paginaPerfil > ultimaPagina) paginaPerfil = ultimaPagina;
+            if (paginaPerfil < 0) paginaPerfil = 0;
+            const cont = document.getElementById('lista-calificaciones');
+            cont.innerHTML = '';
+            if (lista.length === 0) {
+                const vacio = document.createElement('div');
+                vacio.className = 'rating-empty';
+                vacio.textContent = 'Aún no has calificado ninguna historia.';
+                cont.appendChild(vacio);
+            }
+            const desde = paginaPerfil * CALIFICACIONES_POR_PAGINA;
+            lista.slice(desde, desde + CALIFICACIONES_POR_PAGINA).forEach(c => {
+                const fila = document.createElement('div');
+                fila.className = 'rating-row';
+                const info = document.createElement('div');
+                info.className = 'rating-info';
+                const t = document.createElement('div');
+                t.className = 'rating-title';
+                t.textContent = c.titulo;
+                info.appendChild(t);
+                if (c.autor) {
+                    const a = document.createElement('div');
+                    a.className = 'rating-author';
+                    a.textContent = `Autor: ${c.autor}`;
+                    info.appendChild(a);
+                }
+                const est = document.createElement('div');
+                est.className = 'rating-stars';
+                est.textContent = '★'.repeat(c.estrellas) + '☆'.repeat(5 - c.estrellas);
+                const x = document.createElement('button');
+                x.className = 'rating-delete';
+                x.setAttribute('aria-label', 'Eliminar calificación');
+                x.textContent = '✕';
+                x.onclick = () => pedirConfirmacionEliminar(c);
+                // Al tocar el nombre de la obra o el autor, se abre esa historia
+                info.onclick = () => abrirHistoriaCalificada(c.id);
+                fila.appendChild(info);
+                fila.appendChild(est);
+                fila.appendChild(x);
+                cont.appendChild(fila);
+            });
+            const pag = document.getElementById('perfil-paginacion');
+            if (lista.length > CALIFICACIONES_POR_PAGINA) {
+                pag.style.display = 'flex';
+                document.getElementById('perfil-prev').style.visibility = paginaPerfil > 0 ? 'visible' : 'hidden';
+                document.getElementById('perfil-next').style.visibility = paginaPerfil < ultimaPagina ? 'visible' : 'hidden';
+            } else {
+                pag.style.display = 'none';
+            }
+        }
+        function cambiarPaginaPerfil(direccion) {
+            paginaPerfil += direccion;
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            pintarPerfil();
+        }
+        function abrirVistaPerfil() {
+            perfilAbierto = true;
+            paginaPerfil = 0;
+            pintarPerfil();
+            document.getElementById('vista-lectura').style.display = 'none';
+            document.getElementById('vista-perfil').style.display = 'flex';
+            const b = document.getElementById('btn-perfil');
+            b.classList.add('activo');
+            b.setAttribute('aria-pressed', 'true');
+        }
+        function cerrarVistaPerfil() {
+            if (!perfilAbierto) return;
+            perfilAbierto = false;
+            document.getElementById('vista-perfil').style.display = 'none';
+            document.getElementById('vista-lectura').style.display = '';
+            const b = document.getElementById('btn-perfil');
+            b.classList.remove('activo');
+            b.setAttribute('aria-pressed', 'false');
+            refrescarBloqueVotacion(); // por si se eliminó la calificación de la historia que se estaba leyendo
+        }
+        function alternarVistaPerfil() {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            if (perfilAbierto) cerrarVistaPerfil(); else abrirVistaPerfil();
+        }
+        // Abre una historia ya calificada desde la lista del perfil
+        async function abrirHistoriaCalificada(hId) {
+            if (abrirHistoriaCalificada.enCurso) return; // evita toques repetidos
+            abrirHistoriaCalificada.enCurso = true;
+            try {
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                limpiarBuscador();
+                const data = await cargarHistoriaPorId(hId);
+                if (!data) {
+                    if (tg.showAlert) { try { tg.showAlert('No se pudo abrir esta historia.'); } catch (e) {} }
+                    return;
+                }
+                registrarEnHistorial(data.historia_id, data.n);
+                await mostrarHistoria(data); // cierra el perfil y abre la historia desde el capítulo 1
+            } finally {
+                abrirHistoriaCalificada.enCurso = false;
+            }
+        }
+        function pedirConfirmacionEliminar(c) {
+            calificacionPorEliminar = c.id;
+            document.getElementById('modal-libro').textContent = c.titulo;
+            document.getElementById('modal-confirmar').style.display = 'flex';
+        }
+        function cerrarModalConfirmar() {
+            document.getElementById('modal-confirmar').style.display = 'none';
+            calificacionPorEliminar = null;
+        }
+        function confirmarEliminarCalificacion() {
+            const id = calificacionPorEliminar;
+            cerrarModalConfirmar();
+            if (!id) return;
+            eliminarVotoLocal(id); // la historia vuelve a poder recomendarse
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            pintarPerfil();
+            if (id === historiaActualId) refrescarBloqueVotacion();
+        }
+        // Bloque de votación del final de la historia: estrellas para votar, o la calificación ya dada
+        function htmlBloqueVotacion(hId) {
+            const voto = votoLocal(hId);
+            return voto ? `
+                    <div class="rating-box" id="seccion-votacion-estrellas">
+                        <div style="font-weight: bold; font-size: 14px;">Tu calificación</div>
+                        <div class="stars-display" style="font-size: 28px; letter-spacing: 4px;">${'★'.repeat(voto)}${'☆'.repeat(5 - voto)}</div>
+                        <div style="font-size: 13px;">Votaste ${voto} ${voto === 1 ? 'estrella' : 'estrellas'}</div>
+                    </div>` : `
+                    <div class="rating-box" id="seccion-votacion-estrellas">
+                        <div style="font-weight: bold; font-size: 14px;">¿Qué te pareció la historia?</div>
+                        <div class="interactive-stars" id="star-selector">
+                            <span onclick="registrarVotoEstrellas(1)">★</span><span onclick="registrarVotoEstrellas(2)">★</span><span onclick="registrarVotoEstrellas(3)">★</span><span onclick="registrarVotoEstrellas(4)">★</span><span onclick="registrarVotoEstrellas(5)">★</span>
+                        </div>
+                    </div>`;
+        }
+        function refrescarBloqueVotacion() {
+            const caja = document.getElementById('seccion-votacion-estrellas');
+            if (!caja) return;
+            const t = document.createElement('div');
+            t.innerHTML = htmlBloqueVotacion(historiaActualId).trim();
+            caja.replaceWith(t.firstElementChild);
+        }
+
+        // Borra TODO lo que la app guardó en el teléfono, incluidas las calificaciones.
+        // Se activa abriendo la app con el enlace  https://t.me/BetaReadsBot?startapp=limpiar
+        function borrarMemoriaLocal() {
+            try {
+                const claves = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('br')) claves.push(k);
+                }
+                claves.forEach(k => localStorage.removeItem(k));
+            } catch (e) {}
+            leidas = [];
+            historialIds = [];
+            indiceHistorial = -1;
+            cacheHistorias.clear();
+            if (tg.showAlert) { try { tg.showAlert('Memoria local borrada.'); } catch (e) {} }
+        }
+        // Al arrancar: elimina lo que guardaron versiones anteriores (historias, capítulos, vistas)
+        // y conserva únicamente las calificaciones, las historias permanentes y la memoria corta.
+        function limpiarMemoriaAntigua() {
+            try {
+                const borrar = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('br') && k !== CLAVE_VOTOS && k !== CLAVE_LEIDAS && k !== CLAVE_PERM) borrar.push(k);
+                }
+                borrar.forEach(k => localStorage.removeItem(k));
+            } catch (e) {}
+        }
+
+        const listaMusica = [
+            "audio/11145955-mesa-10550.mp3",
+            "audio/40173586-magic-forest-473582.mp3",
+            "audio/amarantamusic-i-give-you-my-heart-109346.mp3",
+            "audio/koto-japan-soundtrack-anime-background-japanese-aikoto-10-470649.mp3",
+            "audio/leberch-fear-525004.mp3",
+            "audio/leberch-reading-books-590361.mp3",
+            "audio/pianocafe_kumi-japanese-piano-568759.mp3",
+            "audio/renilsonb-fjord-nordic-545826.mp3",
+            "audio/the_mountain-suspense-cyberpunk-375986.mp3",
+            "audio/theojt-dark-ambient-121126.mp3"
+        ];
+        let indicePistaActual = listaMusica.indexOf("audio/leberch-reading-books-590361.mp3");
+        if (indicePistaActual === -1) indicePistaActual = 0;
+        function reproducirPistaPredeterminada() {
+            const audio = document.getElementById('bg-music');
+            if (listaMusica.length > 0) {
+                audio.src = listaMusica[indicePistaActual];
+                audio.loop = true;
+                audio.load();
+                audio.play().catch(err => console.log("Error al reproducir pista predeterminada:", err));
+            }
+        }
+        function cambiarPistaManual(direccion) {
+            const audio = document.getElementById('bg-music');
+            const text = document.getElementById('music-text');
+            if (listaMusica.length === 0) return;
+            indicePistaActual = (indicePistaActual + direccion + listaMusica.length) % listaMusica.length;
+            audio.src = listaMusica[indicePistaActual];
+            audio.loop = true;
+            audio.load();
+            audio.play().then(() => {
+                text.innerText = "Música: On";
+                if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            }).catch(err => console.log("Error al cambiar pista manualmente:", err));
+        }
+        function toggleMusicaAleatoria() {
+            const audio = document.getElementById('bg-music');
+            const text = document.getElementById('music-text');
+            if (audio.paused) {
+                if (!audio.src || audio.src === "" || audio.src === window.location.href) {
+                    reproducirPistaPredeterminada();
+                } else {
+                    audio.play().catch(err => console.log("Error al reproducir audio:", err));
+                }
+                text.innerText = "Música: On";
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                audio.pause();
+                text.innerText = "Música: Off";
+                if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            }
+        }
+        // Buscador paginado: máximo 4 resultados por página (la función buscar_historias de Supabase
+        // hace el trabajo: ignora mayúsculas y tildes, usa índices y avisa si hay página siguiente).
+        const MIN_CARACTERES_BUSQUEDA = 3;
+        let terminoBusqueda = '';
+        let paginaBusqueda = 0;
+        let buscandoPagina = false;
+
+        function escaparHtml(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function limpiarBuscador() {
+            const input = document.getElementById('input-busqueda');
+            const resultados = document.getElementById('search-results');
+            if (input) input.value = '';
+            if (resultados) resultados.innerHTML = '';
+            const paginacion = document.getElementById('search-pagination');
+            if (paginacion) paginacion.style.display = 'none';
+            terminoBusqueda = '';
+            paginaBusqueda = 0;
+        }
+        async function buscarHistoriaSupabase() {
+            const texto = document.getElementById('input-busqueda').value.trim();
+            const contenedorResultados = document.getElementById('search-results');
+            contenedorResultados.innerHTML = '';
+            document.getElementById('search-pagination').style.display = 'none';
+            if (texto.length < MIN_CARACTERES_BUSQUEDA) {
+                contenedorResultados.innerHTML = `<div style="text-align: center; color: #666; font-size: 12px; padding: 4px;">Escribe al menos ${MIN_CARACTERES_BUSQUEDA} letras del título o del autor.</div>`;
+                return;
+            }
+            terminoBusqueda = texto;
+            paginaBusqueda = 0;
+            await mostrarPaginaBusqueda();
+        }
+        async function cambiarPaginaBusqueda(direccion) {
+            const nuevaPagina = paginaBusqueda + direccion;
+            if (buscandoPagina || !terminoBusqueda || nuevaPagina < 0) return;
+            paginaBusqueda = nuevaPagina;
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            await mostrarPaginaBusqueda();
+        }
+        async function mostrarPaginaBusqueda() {
+            if (buscandoPagina) return; // evita toques repetidos mientras carga
+            buscandoPagina = true;
+            try {
+            const texto = terminoBusqueda;
+            const contenedorResultados = document.getElementById('search-results');
+            const paginacion = document.getElementById('search-pagination');
+            const { data: res, error } = await supabaseClient
+                .rpc('buscar_historias', { p_texto: texto, p_pagina: paginaBusqueda });
+            contenedorResultados.innerHTML = '';
+            paginacion.style.display = 'none';
+            if (error || !res) {
+                console.error("Error en búsqueda:", error);
+                contenedorResultados.innerHTML = `<div style="text-align: center; color: #d9534f; font-size: 12px; padding: 4px;">Ocurrió un error al realizar la búsqueda.</div>`;
+                return;
+            }
+            const data = (res && res.items) ? res.items : [];
+            if (data.length > 0) {
+                const hayMas = !!res.hay_mas;
+                data.forEach(libro => {
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.innerHTML = `
+                        <div>
+                            <div style="font-weight: bold; color: #2481cc;">${escaparHtml(libro.titulo_historia)}</div>
+                            <div style="font-size: 11px; color: #666;">Autor: ${escaparHtml(libro.autor || 'Desconocido')}</div>
+                        </div>
+                        <span style="font-size: 12px; font-weight: bold; color: #28a745;">Leer ➔</span>
+                    `;
+                    item.onclick = async () => {
+                        historiaActualId = libro.historia_id;
+                        capituloActualId = 'cap_1';
+                        pasoActualIndex = 0;
+                        limpiarBuscador();
+                        document.getElementById('progress-bars-container').style.display = 'flex';
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                        const historiaCargada = await cargarConfiguracionHistoria(historiaActualId);
+                        if (historiaCargada) {
+                            registrarEnHistorial(historiaCargada.historia_id, historiaCargada.n);
+                            cerrarVistaPerfil(); // vuelve a la lectura con la historia elegida
+                        }
+                        await cargarCapitulo(capituloActualId, historiaCargada && historiaCargada.cap_1);
+                    };
+                    contenedorResultados.appendChild(item);
+                });
+                // Las flechas solo aparecen si hay más de 4 resultados en total
+                if (paginaBusqueda > 0 || hayMas) {
+                    paginacion.style.display = 'flex';
+                    document.getElementById('search-prev').style.visibility = paginaBusqueda > 0 ? 'visible' : 'hidden';
+                    document.getElementById('search-next').style.visibility = hayMas ? 'visible' : 'hidden';
+                }
+            } else {
+                contenedorResultados.innerHTML = `<div style="text-align: center; color: #856404; font-size: 12px; padding: 8px; background: #fff3cd; border-radius: 6px;">No encontramos este título o autor. ¡Pronto podríamos agregarlo!</div>`;
+            }
+            } finally {
+                buscandoPagina = false;
+            }
+        }
+        // Pregunta antes de borrar todo (enlace ?startapp=limpiar). Devuelve true solo si el usuario pulsa "Eliminar".
+        function confirmarBorradoTotal() {
+            return new Promise(resolve => {
+                const mensaje = '¿Estás seguro de que deseas eliminar todo tu historial de lecturas y tus calificaciones guardadas? Esta acción no se puede deshacer.';
+                try {
+                    if (typeof tg.showPopup === 'function') {
+                        tg.showPopup({
+                            title: 'Eliminar historial',
+                            message: mensaje,
+                            buttons: [
+                                { id: 'eliminar', type: 'destructive', text: 'Eliminar' },
+                                { id: 'cancelar', type: 'default', text: 'Cancelar' }
+                            ]
+                        }, (idBoton) => resolve(idBoton === 'eliminar')); // cerrar el aviso sin elegir = cancelar
+                        return;
+                    }
+                } catch (e) {}
+                resolve(window.confirm(mensaje));
+            });
+        }
+        async function verificarParametroHistoria() {
+            const params = new URLSearchParams(window.location.search);
+            let historiaParam = params.get('historia') || params.get('startapp');
+            if (!historiaParam && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                historiaParam = tg.initDataUnsafe.start_param;
+            }
+            if (historiaParam === 'limpiar') {   // palabra reservada: pide confirmación, borra la memoria local y abre una historia al azar
+                if (await confirmarBorradoTotal()) borrarMemoriaLocal();
+                historiaParam = '';
+            }
+            if (historiaParam) {
+                historiaActualId = historiaParam;
+            }
+        }
+        // Mezcla Fisher-Yates: cada orden posible tiene la misma probabilidad
+        function barajarArreglo(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+        function obtenerIndicePorIdCapitulo(idCap) {
+            if (idCap === 'fin' || idCap.includes('epilogo')) return totalPasosHistoria - 1;
+            const match = idCap.match(/\d+/);
+            if (match) {
+                const num = parseInt(match[0], 10);
+                return Math.min(totalPasosHistoria - 1, Math.max(0, num - 1));
+            }
+            return pasoActualIndex;
+        }
+        function actualizarBarritasProgreso() {
+            const contenedor = document.getElementById('progress-bars-container');
+            let htmlBarritas = '';
+            for (let i = 0; i < totalPasosHistoria; i++) {
+                let claseActiva = i <= pasoActualIndex ? 'bar active' : 'bar';
+                htmlBarritas += `<div class="${claseActiva}"></div>`;
+            }
+            contenedor.innerHTML = htmlBarritas;
+        }
+
+        // ---------- SELECCIÓN PONDERADA (40% recientes / 60% resto) ----------
+        // La elección se hace dentro de Supabase (función obtener_historia_no_leida):
+        // UNA sola petición por historia nueva, nunca se descarga la lista de historias.
+        // Prioridad en la base: 1) ni permanente ni reciente, 2) no permanente (la vista hace más tiempo),
+        // 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo).
+
+        // n = número de la historia (lo trae la respuesta de Supabase); se anota en la memoria corta
+        function registrarEnHistorial(id, n) {
+            historialIds = historialIds.slice(0, indiceHistorial + 1);
+            historialIds.push(id);
+            if (historialIds.length > MAX_HISTORIAL) historialIds.shift();
+            indiceHistorial = historialIds.length - 1;
+
+            marcarLeida(n);
+        }
+
+        // Pide una historia nueva: no calificada/terminada y no vista hace poco (40% recientes / 60% resto)
+        async function pedirHistoriaPonderada() {
+            const { data, error } = await supabaseClient
+                .rpc('obtener_historia_no_leida', { p_perm: textoPermanentes(), p_recientes: leidas });
+            if (error || !data) return null;
+            // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
+            // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
+            guardarEnCache(data);
+            return data;
+        }
+
+        // Historia concreta (ir atrás/adelante, perfil, enlaces): primero la caché en memoria (egreso cero);
+        // si no está, se pide completa a Supabase
+        async function cargarHistoriaPorId(hId) {
+            const enCache = cacheHistorias.get(hId);
+            if (enCache) return enCache;
+            const { data, error } = await supabaseClient
+                .rpc('obtener_historia', { p_historia: hId });
+            if (error || !data) return null;
+            guardarEnCache(data);
+            return data;
+        }
+
+        async function mostrarHistoria(data) {
+            cerrarVistaPerfil();
+            historiaActualId = data.historia_id;
+            capituloActualId = 'cap_1';
+            pasoActualIndex = 0;
+            document.getElementById('progress-bars-container').style.display = 'flex';
+            aplicarConfigHistoria(data);
+            await cargarCapitulo('cap_1', data.cap_1);
+        }
+
+        async function cambiarHistoriaAdyacente(direccion) {
+            if (cambiarHistoriaAdyacente.enCurso) return; // evita clics solapados
+            cambiarHistoriaAdyacente.enCurso = true;
+            try {
+                limpiarBuscador();
+                if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+
+                let data = null;
+                // Ir atrás/adelante dentro de lo ya visto: sale de la caché (o de Supabase si ya no está en ella)
+                const destino = indiceHistorial + direccion;
+                if (destino >= 0 && destino < historialIds.length) {
+                    data = await cargarHistoriaPorId(historialIds[destino]);
+                    if (data) indiceHistorial = destino;
+                }
+                // Historia nueva (o la anterior ya no está disponible)
+                if (!data) {
+                    data = await pedirHistoriaPonderada();
+                    if (!data) return; // no hay otra historia a la que ir
+                    registrarEnHistorial(data.historia_id, data.n);
+                }
+                await mostrarHistoria(data);
+            } finally {
+                cambiarHistoriaAdyacente.enCurso = false;
+            }
+        }
+
+        // Pinta título, autor, total de capítulos y estrellas con los datos que ya trae la historia
+        function aplicarConfigHistoria(h) {
+            autorActualNombre = h.autor || 'Desconocido';
+            tituloActual = h.titulo_historia || '';
+            nActual = Number.isInteger(h.n) ? h.n : null;
+            completarDatosVotoLocal(h.historia_id, tituloActual, autorActualNombre, nActual);
+            if (h.total_capitulos && h.total_capitulos > 0) {
+                totalPasosHistoria = h.total_capitulos;
+            }
+            document.getElementById('story-title-author').innerText = h.titulo_historia;
+            document.getElementById('story-author-name').innerText = `Autor: ${autorActualNombre}`;
+            pintarEstadisticas(h.votos, h.suma);
+        }
+
+        // Configuración + estadísticas + capítulo 1 de una historia concreta (de la caché o de UNA petición)
+        async function cargarConfiguracionHistoria(hId) {
+            const data = await cargarHistoriaPorId(hId);
+            if (!data) return null;
+            aplicarConfigHistoria(data);
+            return data;
+        }
+
+        function pintarEstadisticas(votos, suma) {
+            let totalVotos = votos || 0;
+            let sumaEstrellas = suma || 0;
+            let promedio = totalVotos > 0 ? (sumaEstrellas / totalVotos).toFixed(1) : '0.0';
+            document.getElementById('avg-rating-num').innerText = promedio;
+            document.getElementById('total-ratings-count').innerText = `(${totalVotos})`;
+            let numEstrellasEnteras = Math.round(parseFloat(promedio));
+            let estrellasStr = '★'.repeat(numEstrellasEnteras) + '☆'.repeat(5 - numEstrellasEnteras);
+            document.getElementById('avg-stars-icon').innerText = estrellasStr;
+        }
+
+        async function registrarVotoEstrellas(calificacion) {
+            if (registrarVotoEstrellas.enCurso || votoLocal(historiaActualId)) return; // evita votos dobles
+            registrarVotoEstrellas.enCurso = true;
+            try {
+            const hVotada = historiaActualId;
+            const nVotada = nActual;
+            const tVotada = tituloActual, aVotada = autorActualNombre;
+            // El voto se suma de forma atómica en la base (función votar_estrellas)
+            const { data, error } = await supabaseClient
+                .rpc('votar_estrellas', { p_historia: hVotada, p_estrellas: calificacion });
+            if (error || !data) {
+                console.error("Error al registrar voto:", error);
+                return;
+            }
+            // Recordar SOLO la calificación del usuario en el teléfono (y marcarla como permanente)
+            guardarVotoLocal(hVotada, calificacion, tVotada, aVotada, nVotada);
+            marcarPermanente(nVotada);
+            // La caché también debe mostrar el promedio nuevo si el lector vuelve a esta historia
+            const enCache = cacheHistorias.get(hVotada);
+            if (enCache) { enCache.votos = data.votos; enCache.suma = data.suma; }
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            const contenedorVoto = document.getElementById('seccion-votacion-estrellas');
+            if (contenedorVoto) {
+                contenedorVoto.innerHTML = `<div style="font-weight: bold; color: #28a745; padding: 10px;">¡Gracias por tu voto de ${calificacion} estrellas! ⭐</div>`;
+            }
+            pintarEstadisticas(data.votos, data.suma);
+            } finally {
+                registrarVotoEstrellas.enCurso = false;
+            }
+        }
+
+        async function iniciarApp() {
+            const telegramUser = tg.initDataUnsafe?.user;
+            const params = new URLSearchParams(window.location.search);
+            const startParam = tg.initDataUnsafe?.start_param;
+            if ((!telegramUser || !telegramUser.id) && !params.get('historia') && !params.get('startapp') && !startParam) {
+                document.getElementById('app').innerHTML = `
+                    <div class="blocked-card">
+                        <h3>Acceso Restringido</h3>
+                        <p>Abre esta Mini App directamente desde Telegram.</p>
+                    </div>
+                `;
+                return;
+            }
+            await verificarParametroHistoria();
+            let historiaPrecargada = null;
+            if (!historiaActualId) {
+                // Una sola petición: trae solo UNA historia nueva (selección ponderada 40/60, sin repetir permanentes)
+                const data = await pedirHistoriaPonderada();
+                if (data) {
+                    historiaActualId = data.historia_id;
+                    historiaPrecargada = data;
+                }
+            }
+            if (!historiaActualId) {
+                document.getElementById('app').innerHTML = `
+                    <div class="blocked-card">
+                        <h3>No hay historias disponibles</h3>
+                        <p>Vuelve más tarde para disfrutar de nuevas aventuras.</p>
+                    </div>
+                `;
+                return;
+            }
+            pasoActualIndex = 0;
+            if (historiaPrecargada) {
+                aplicarConfigHistoria(historiaPrecargada);
+            } else {
+                historiaPrecargada = await cargarConfiguracionHistoria(historiaActualId);
+                if (!historiaPrecargada) {
+                    // Enlace a una historia privada o inexistente: mostrar otra
+                    historiaPrecargada = await pedirHistoriaPonderada();
+                    if (historiaPrecargada) {
+                        historiaActualId = historiaPrecargada.historia_id;
+                        aplicarConfigHistoria(historiaPrecargada);
+                    }
+                }
+            }
+            if (historiaPrecargada) registrarEnHistorial(historiaPrecargada.historia_id, historiaPrecargada.n);
+            await cargarCapitulo(capituloActualId, historiaPrecargada && historiaPrecargada.cap_1);
+        }
+        limpiarMemoriaAntigua();
+        setTimeout(iniciarApp, 500);
+        async function cargarCapitulo(idCapitulo, capituloPrecargado) {
+            opcionSeleccionada = null; // capítulo nuevo: ninguna opción marcada
+            document.getElementById('hint-row').style.display = 'flex';
+            document.getElementById('btn_next').style.display = 'none';
+            document.getElementById('hint-siguiente').style.display = 'block';
+            document.getElementById('btn-compartir-icono').style.display = 'flex';
+            document.getElementById('progress-bars-container').style.display = 'flex';
+            pasoActualIndex = obtenerIndicePorIdCapitulo(idCapitulo);
+            actualizarBarritasProgreso();
+
+            // Capítulo + opciones en UNA sola petición (o ya vienen incluidos con la historia)
+            const hId = historiaActualId;
+            const nDeEstaHistoria = nActual;
+            let capData = capituloPrecargado;
+            if (!capData) {
+                const { data, error } = await supabaseClient
+                    .rpc('obtener_capitulo', { p_historia: hId, p_capitulo: idCapitulo });
+                if (error || !data) return false; // no se toca imagen ni texto
+                capData = data;
+            }
+            // La imagen cambia junto con el texto, cuando el capítulo ya está listo
+            document.getElementById('imagen').src = 'https://picsum.photos/400/200?random=' + Math.random();
+
+            const capituloData = capData;
+            const opcionesValidas = capData.opciones || [];
+            const opcionesList = capData.siguiente_por_defecto ? [{ siguiente_capitulo: capData.siguiente_por_defecto }] : [];
+            const elementoTitulo = document.getElementById('titulo');
+            if (capituloData.titulo && capituloData.titulo.trim() !== '') {
+                elementoTitulo.innerText = capituloData.titulo;
+                elementoTitulo.style.display = 'block';
+            } else {
+                elementoTitulo.innerText = '';
+                elementoTitulo.style.display = 'none';
+            }
+            document.getElementById('pregunta').innerText = capituloData.descripcion;
+            const contenedorOpciones = document.getElementById('opciones-container');
+            contenedorOpciones.innerHTML = '';
+            let esFinal = (idCapitulo === 'fin' || idCapitulo.includes('epilogo'));
+            if (!esFinal && opcionesValidas.length === 0) {
+                let siguienteDestino = 'cap_' + (pasoActualIndex + 2);
+                if (opcionesList && opcionesList.length > 0 && opcionesList[0].siguiente_capitulo) {
+                    siguienteDestino = opcionesList[0].siguiente_capitulo;
+                }
+                if (siguienteDestino === 'fin' || siguienteDestino.includes('epilogo')) {
+                    esFinal = true;
+                }
+            }
+            if (esFinal) {
+                marcarPermanente(nDeEstaHistoria); // llegó al final: historia terminada, no se vuelve a recomendar
+                pasoActualIndex = totalPasosHistoria - 1;
+                actualizarBarritasProgreso();
+                document.getElementById('hint-siguiente').style.display = 'none';
+                // En el final ya está el botón grande "Compartir Reseña": se oculta el icono para no duplicar
+                document.getElementById('btn-compartir-icono').style.display = 'none';
+                const bloqueFinal = document.createElement('div');
+                bloqueFinal.innerHTML = `
+                    ${htmlBloqueVotacion(hId)}
+                    <button class="btn btn-share" onclick="compartirReseña()"><span>Compartir</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></svg></button>
+                    <div class="donation-box">
+                        <div class="donation-text">
+                            Apóyanos ahora mismo enviando un regalo a nuestro canal.
+                        </div>
+                        <button class="btn-channel" onclick="abrirCanalRegalos()">Ver Canal</button>
+                    </div>
+                `;
+                contenedorOpciones.appendChild(bloqueFinal);
+                return;
+            }
+            if (opcionesValidas.length > 0) {
+                // Orden aleatorio distinto en cada capítulo y para cada lector
+                const opcionesAleatorias = barajarArreglo(opcionesValidas);
+                opcionesAleatorias.forEach((opcion) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.innerText = opcion.texto_opcion;
+                    btn.onclick = () => procesarSeleccionOpcion(opcion, btn);
+                    contenedorOpciones.appendChild(btn);
+                });
+            } else {
+                document.getElementById('hint-siguiente').style.display = 'none';
+                const btnNext = document.getElementById('btn_next');
+                btnNext.style.display = 'block';
+                let siguienteDestino = 'cap_' + (pasoActualIndex + 2);
+                if (opcionesList && opcionesList.length > 0 && opcionesList[0].siguiente_capitulo) {
+                    siguienteDestino = opcionesList[0].siguiente_capitulo;
+                }
+                btnNext.onclick = () => {
+                    pasoActualIndex = obtenerIndicePorIdCapitulo(siguienteDestino);
+                    capituloActualId = siguienteDestino;
+                    cargarCapitulo(capituloActualId);
+                };
+            }
+        }
+        // Comparte el enlace directo a la historia: quien lo abra la verá desde el capítulo 1
+        function compartirReseña() {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            const tituloObra = document.getElementById('story-title-author').innerText;
+            const botUsername = 'BetaReadsBot';
+            const linkDirectoApp = `https://t.me/${botUsername}?startapp=${historiaActualId}`;
+            const urlTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(linkDirectoApp)}&text=${encodeURIComponent(`¡Lee "${tituloObra}" en Beta Reads!`)}`;
+            if (tg && typeof tg.openTelegramLink === 'function') {
+                tg.openTelegramLink(urlTelegramShare);
+            } else {
+                window.open(urlTelegramShare, '_blank');
+            }
+        }
+        // Abre el canal dentro de Telegram (lo usan el botón "Ver Canal" y el enlace @BookBetaReader)
+        function abrirCanalRegalos(ev) {
+            if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            const urlCanal = 'https://t.me/BookBetaReader';
+            if (tg && typeof tg.openTelegramLink === 'function') {
+                tg.openTelegramLink(urlCanal);
+            } else {
+                window.open(urlCanal, '_blank');
+            }
+        }
+        // Tocar una opción la marca y muestra "Siguiente Capítulo".
+        // Tocar la MISMA opción otra vez la desmarca y vuelven a quedar todas disponibles (sin cambiar su orden).
+        function procesarSeleccionOpcion(opcionElegida, btnElegido) {
+            const botones = document.querySelectorAll('#opciones-container .btn');
+            const filaHint = document.getElementById('hint-row'); // texto de ayuda + icono de compartir
+            const btnNext = document.getElementById('btn_next');
+
+            if (opcionSeleccionada === opcionElegida) {
+                opcionSeleccionada = null;
+                botones.forEach(b => {
+                    b.style.display = '';
+                    b.disabled = false;
+                    b.classList.remove('btn-seleccionada');
+                });
+                btnNext.style.display = 'none';
+                btnNext.onclick = null;
+                filaHint.style.display = 'flex';
+                if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+                return;
+            }
+
+            opcionSeleccionada = opcionElegida;
+            botones.forEach(b => {
+                const esLaElegida = (b === btnElegido);
+                b.style.display = esLaElegida ? '' : 'none'; // las demás desaparecen
+                b.classList.toggle('btn-seleccionada', esLaElegida); // la elegida queda gris y activa para poder desmarcarla
+            });
+            filaHint.style.display = 'none';
+            btnNext.style.display = 'block';
+            btnNext.onclick = () => {
+                pasoActualIndex = obtenerIndicePorIdCapitulo(opcionElegida.siguiente_capitulo);
+                capituloActualId = opcionElegida.siguiente_capitulo;
+                cargarCapitulo(capituloActualId);
+            };
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+    </script>
 </body>
 </html>
