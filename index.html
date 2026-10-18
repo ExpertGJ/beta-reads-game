@@ -656,7 +656,7 @@
         //  3) br_leidas: las últimas MAX_LEIDAS historias mostradas (memoria corta)
         // Historias, capítulos, votos totales y promedio se piden a Supabase cada vez que se muestran.
         const CLAVE_VOTOS = 'br_votos';
-        const MAX_VOTOS_GUARDADOS = 3000;
+        const MAX_VOTOS_GUARDADOS = 10000; // ~1,2 MB en el teléfono; al pasar de 10.000 se borra la más antigua de la lista
 
         // ---------- HISTORIAS PERMANENTES: calificadas o terminadas (llegó al final) ----------
         // Un bit por historia (el bit número n se enciende cuando la historia n queda terminada o calificada).
@@ -758,20 +758,25 @@
             v[hId] = { e: estrellasDe(x), t: titulo || '', a: autor || '', n: nNuevo };
             escribirVotos(v);
         }
-        // Lista de calificaciones en orden alfabético por título
+        // Lista de calificaciones: la calificada más recientemente sale primero.
+        // El orden de las claves del objeto es el orden en que se calificó (guardarVotoLocal borra la clave
+        // y la vuelve a agregar al final), así que basta invertirlo: no hay que ordenar nada y es
+        // instantáneo incluso con 10.000 calificaciones.
         function listarCalificaciones() {
             const v = leerVotos();
-            const lista = Object.keys(v).map(id => {
+            const lista = [];
+            const ids = Object.keys(v).reverse();
+            for (const id of ids) {
                 const x = v[id];
-                const legible = id.replace(/_/g, ' ');
-                return {
-                    id,
-                    estrellas: Math.min(5, Math.max(0, estrellasDe(x))),
-                    titulo: (x && x.t) || (legible.charAt(0).toUpperCase() + legible.slice(1)),
-                    autor: (x && x.a) || ''
-                };
-            }).filter(c => c.estrellas >= 1);
-            lista.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+                const estrellas = Math.min(5, Math.max(0, estrellasDe(x)));
+                if (estrellas < 1) continue;
+                let titulo = x && x.t;
+                if (!titulo) {
+                    const legible = id.replace(/_/g, ' ');
+                    titulo = legible.charAt(0).toUpperCase() + legible.slice(1);
+                }
+                lista.push({ id, estrellas, titulo, autor: (x && x.a) || '' });
+            }
             return lista;
         }
 
