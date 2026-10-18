@@ -853,7 +853,7 @@
         }
 
         // ---------- VISTA DE PERFIL: libros calificados + buscador ----------
-        const CALIFICACIONES_POR_PAGINA = 4;
+        const CALIFICACIONES_POR_PAGINA = 3;
         let perfilAbierto = false;
         let paginaPerfil = 0;
         let calificacionPorEliminar = null;
@@ -1111,7 +1111,7 @@
                 if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             }
         }
-        // Buscador paginado: máximo 4 resultados por página (la función buscar_historias de Supabase
+        // Buscador paginado: máximo 3 resultados por página (la función buscar_historias de Supabase
         // hace el trabajo: ignora mayúsculas y tildes, usa índices y avisa si hay página siguiente).
         const MIN_CARACTERES_BUSQUEDA = 3;
         let terminoBusqueda = '';
@@ -1197,7 +1197,7 @@
                     };
                     contenedorResultados.appendChild(item);
                 });
-                // Las flechas solo aparecen si hay más de 4 resultados en total
+                // Las flechas solo aparecen si hay más de 3 resultados en total
                 if (paginaBusqueda > 0 || hayMas) {
                     paginacion.style.display = 'flex';
                     document.getElementById('search-prev').style.visibility = paginaBusqueda > 0 ? 'visible' : 'hidden';
