@@ -1204,11 +1204,21 @@
 
         // n = número de la historia (lo trae la respuesta de Supabase); se anota en la memoria corta
         function registrarEnHistorial(id, n) {
-            historialIds = historialIds.slice(0, indiceHistorial + 1);
-            historialIds.push(id);
-            if (historialIds.length > MAX_HISTORIAL) historialIds.shift();
-            indiceHistorial = historialIds.length - 1;
-
+            // Si ya se está mirando esa historia, no se duplica en el historial
+            if (historialIds[indiceHistorial] !== id) {
+                historialIds = historialIds.slice(0, indiceHistorial + 1);
+                historialIds.push(id);
+                if (historialIds.length > MAX_HISTORIAL) historialIds.shift();
+                indiceHistorial = historialIds.length - 1;
+            }
+            marcarLeida(n);
+        }
+        // Retroceder más allá de la primera historia vista: la historia nueva se pone AL INICIO del historial,
+        // así la flecha de atrás puede seguir retrocediendo sin rebotar
+        function registrarEnHistorialAlInicio(id, n) {
+            historialIds.unshift(id);
+            if (historialIds.length > MAX_HISTORIAL) historialIds.pop();
+            indiceHistorial = 0;
             marcarLeida(n);
         }
 
@@ -1217,20 +1227,30 @@
         // una sola "pendiente"), se pide otra vez ignorando las permanentes: así rotan TODAS las historias
         // y ninguna desaparece del panel superior.
         async function pedirHistoriaPonderada() {
+            // La historia que el lector está mirando cuenta como la MÁS reciente (solo en este envío),
+            // para que la base nunca la devuelva como "siguiente", aunque haya retrocedido en el historial.
+            let recientes = leidas;
+            if (Number.isInteger(nActual)) recientes = leidas.filter(x => x !== nActual).concat(nActual);
+
             const llamar = (perm) => supabaseClient
-                .rpc('obtener_historia_no_leida', { p_perm: perm, p_recientes: leidas });
+                .rpc('obtener_historia_no_leida', { p_perm: perm, p_recientes: recientes });
 
             const { data: primera, error } = await llamar(textoPermanentes());
             if (error || !primera) return null;
-            let data = primera;
 
-            const vistasRecien = historialIds.slice(-2);
-            if (vistasRecien.includes(data.historia_id)) {
+            // Se evitan las 2 últimas del historial y la que se está leyendo
+            const evitar = historialIds.slice(-2);
+            if (historiaActualId) evitar.push(historiaActualId);
+
+            const candidatas = [primera];
+            if (evitar.includes(primera.historia_id)) {
                 const { data: otra, error: error2 } = await llamar('');
-                if (!error2 && otra && !vistasRecien.includes(otra.historia_id)) {
-                    data = otra;
-                }
+                if (!error2 && otra) candidatas.push(otra);
             }
+            // Preferencia: 1) no vista hace poco, 2) distinta de la actual, 3) la primera que devolvió la base
+            const data = candidatas.find(c => !evitar.includes(c.historia_id))
+                      || candidatas.find(c => c.historia_id !== historiaActualId)
+                      || primera;
             // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
             // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
             guardarEnCache(data);
@@ -1277,7 +1297,9 @@
                 if (!data) {
                     data = await pedirHistoriaPonderada();
                     if (!data) return; // no hay otra historia a la que ir
-                    registrarEnHistorial(data.historia_id, data.n);
+                    if (data.historia_id === historiaActualId) return; // no hay otra distinta: no se recarga la misma
+                    if (direccion < 0 && destino < 0) registrarEnHistorialAlInicio(data.historia_id, data.n);
+                    else registrarEnHistorial(data.historia_id, data.n);
                 }
                 await mostrarHistoria(data);
             } finally {
