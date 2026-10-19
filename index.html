@@ -341,6 +341,14 @@
         .search-result-item:hover {
             background: #e9ecef;
         }
+        .search-leer {
+            font-size: 12px;
+            font-weight: bold;
+            color: #28a745;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
         .blocked-card {
             background: #fff3cd;
             color: #856404;
@@ -1225,12 +1233,14 @@
                 data.forEach(libro => {
                     const item = document.createElement('div');
                     item.className = 'search-result-item';
+                    // Mismo formato que las calificadas: 1.ª línea el título, 2.ª línea el autor,
+                    // cada una en una sola línea y con "…" si no cabe (todas las filas miden igual)
                     item.innerHTML = `
-                        <div>
-                            <div style="font-weight: bold; color: #2481cc;">${escaparHtml(libro.titulo_historia)}</div>
-                            <div style="font-size: 11px; color: #666;">Autor: ${escaparHtml(libro.autor || 'Desconocido')}</div>
+                        <div class="rating-info">
+                            <div class="rating-title">${escaparHtml(libro.titulo_historia)}</div>
+                            <div class="rating-author">Autor: ${escaparHtml(libro.autor || 'Desconocido')}</div>
                         </div>
-                        <span style="font-size: 12px; font-weight: bold; color: #28a745;">Leer ➔</span>
+                        <span class="search-leer">Leer ➔</span>
                     `;
                     item.onclick = async () => {
                         historiaActualId = libro.historia_id;
@@ -1254,7 +1264,7 @@
                     // Las dos flechas siempre se ven; la que no se puede usar queda atenuada y sin función
                     document.getElementById('search-prev').disabled = !(paginaBusqueda > 0);
                     document.getElementById('search-next').disabled = !hayMas;
-                    // Con varias páginas, el recuadro conserva el alto de la página más alta (normalmente la de 3 resultados)
+                    // Con varias páginas, el recuadro conserva el alto de la página más alta (la de 3 resultados; todas las filas miden igual)
                     alturaMaxResultados = Math.max(alturaMaxResultados, contenedorResultados.offsetHeight);
                     contenedorResultados.style.minHeight = alturaMaxResultados + 'px';
                 } else {
