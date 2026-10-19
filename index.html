@@ -961,6 +961,21 @@
                 fila.appendChild(x);
                 cont.appendChild(fila);
             });
+            // Si hay más de una página, las páginas incompletas se rellenan con filas invisibles:
+            // el recuadro conserva siempre el alto de 3 historias y no "salta" al cambiar de página.
+            // (Con 3 historias o menos no se rellena: el recuadro se ajusta a lo que hay.)
+            if (lista.length > CALIFICACIONES_POR_PAGINA) {
+                const conAutor = cont.querySelector('.rating-author');
+                const filaModelo = conAutor ? conAutor.closest('.rating-row') : cont.firstElementChild;
+                const faltan = CALIFICACIONES_POR_PAGINA - cont.children.length;
+                for (let k = 0; k < faltan && filaModelo; k++) {
+                    const relleno = filaModelo.cloneNode(true);
+                    relleno.style.visibility = 'hidden';
+                    relleno.style.pointerEvents = 'none';
+                    relleno.setAttribute('aria-hidden', 'true');
+                    cont.appendChild(relleno);
+                }
+            }
             const pag = document.getElementById('perfil-paginacion');
             if (lista.length > CALIFICACIONES_POR_PAGINA) {
                 pag.style.display = 'flex';
@@ -1149,6 +1164,7 @@
         let terminoBusqueda = '';
         let paginaBusqueda = 0;
         let buscandoPagina = false;
+        let alturaMaxResultados = 0; // alto mayor visto en esta búsqueda: el recuadro no encoge al pasar de página
 
         function escaparHtml(t) {
             return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1158,7 +1174,8 @@
             const input = document.getElementById('input-busqueda');
             const resultados = document.getElementById('search-results');
             if (input) input.value = '';
-            if (resultados) resultados.innerHTML = '';
+            if (resultados) { resultados.innerHTML = ''; resultados.style.minHeight = ''; }
+            alturaMaxResultados = 0;
             const paginacion = document.getElementById('search-pagination');
             if (paginacion) paginacion.style.display = 'none';
             terminoBusqueda = '';
@@ -1168,6 +1185,8 @@
             const texto = document.getElementById('input-busqueda').value.trim();
             const contenedorResultados = document.getElementById('search-results');
             contenedorResultados.innerHTML = '';
+            contenedorResultados.style.minHeight = ''; // búsqueda nueva: el recuadro vuelve a ajustarse a sus resultados
+            alturaMaxResultados = 0;
             document.getElementById('search-pagination').style.display = 'none';
             if (texto.length < MIN_CARACTERES_BUSQUEDA) {
                 contenedorResultados.innerHTML = `<div style="text-align: center; color: #666; font-size: 12px; padding: 4px;">Escribe al menos ${MIN_CARACTERES_BUSQUEDA} letras del título o del autor.</div>`;
@@ -1235,8 +1254,17 @@
                     // Las dos flechas siempre se ven; la que no se puede usar queda atenuada y sin función
                     document.getElementById('search-prev').disabled = !(paginaBusqueda > 0);
                     document.getElementById('search-next').disabled = !hayMas;
+                    // Con varias páginas, el recuadro conserva el alto de la página más alta (normalmente la de 3 resultados)
+                    alturaMaxResultados = Math.max(alturaMaxResultados, contenedorResultados.offsetHeight);
+                    contenedorResultados.style.minHeight = alturaMaxResultados + 'px';
+                } else {
+                    // 3 resultados o menos: el recuadro se ajusta a lo que hay
+                    contenedorResultados.style.minHeight = '';
+                    alturaMaxResultados = 0;
                 }
             } else {
+                contenedorResultados.style.minHeight = '';
+                alturaMaxResultados = 0;
                 contenedorResultados.innerHTML = `<div style="text-align: center; color: #856404; font-size: 12px; padding: 8px; background: #fff3cd; border-radius: 6px;">No encontramos este título o autor. ¡Pronto podríamos agregarlo!</div>`;
             }
             } finally {
