@@ -495,8 +495,12 @@
             cursor: pointer;
             user-select: none;
         }
-        .pag-flecha:active {
+        .pag-flecha:active:not(:disabled) {
             color: var(--tg-theme-text-color, #000000);
+        }
+        .pag-flecha:disabled {
+            opacity: 0.3;         /* visible pero inactiva (primera/última página) */
+            cursor: default;
         }
         #caja-calificaciones {
             padding: 12px;        /* recuadro de calificadas más ajustado */
@@ -960,8 +964,9 @@
             const pag = document.getElementById('perfil-paginacion');
             if (lista.length > CALIFICACIONES_POR_PAGINA) {
                 pag.style.display = 'flex';
-                document.getElementById('perfil-prev').style.visibility = paginaPerfil > 0 ? 'visible' : 'hidden';
-                document.getElementById('perfil-next').style.visibility = paginaPerfil < ultimaPagina ? 'visible' : 'hidden';
+                // Las dos flechas siempre se ven; la que no se puede usar queda atenuada y sin función
+                document.getElementById('perfil-prev').disabled = !(paginaPerfil > 0);
+                document.getElementById('perfil-next').disabled = !(paginaPerfil < ultimaPagina);
             } else {
                 pag.style.display = 'none';
             }
@@ -1227,8 +1232,9 @@
                 // Las flechas solo aparecen si hay más de 3 resultados en total
                 if (paginaBusqueda > 0 || hayMas) {
                     paginacion.style.display = 'flex';
-                    document.getElementById('search-prev').style.visibility = paginaBusqueda > 0 ? 'visible' : 'hidden';
-                    document.getElementById('search-next').style.visibility = hayMas ? 'visible' : 'hidden';
+                    // Las dos flechas siempre se ven; la que no se puede usar queda atenuada y sin función
+                    document.getElementById('search-prev').disabled = !(paginaBusqueda > 0);
+                    document.getElementById('search-next').disabled = !hayMas;
                 }
             } else {
                 contenedorResultados.innerHTML = `<div style="text-align: center; color: #856404; font-size: 12px; padding: 8px; background: #fff3cd; border-radius: 6px;">No encontramos este título o autor. ¡Pronto podríamos agregarlo!</div>`;
