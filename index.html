@@ -1668,7 +1668,7 @@
             const tituloObra = document.getElementById('story-title-author').innerText;
             const botUsername = 'BetaReadsBot';
             const linkDirectoApp = `https://t.me/${botUsername}?startapp=${historiaActualId}`;
-            const urlTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(linkDirectoApp)}&text=${encodeURIComponent(`¡Lee "${tituloObra}" en Beta Reads!`)}`;
+            const urlTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(linkDirectoApp)}&text=${encodeURIComponent(`¡Lee «${tituloObra}» en Beta Reads!`)}`;
             if (tg && typeof tg.openTelegramLink === 'function') {
                 tg.openTelegramLink(urlTelegramShare);
             } else {
