@@ -622,7 +622,8 @@
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8z"/></svg>
             </button>
             <div class="music-group">
-                <audio id="bg-music" preload="none" loop></audio>
+                <!-- Sin "loop": la repetición sin cortes la hace el fundido cruzado del script -->
+                <audio id="bg-music" preload="none"></audio>
                 <div class="music-box">
                     <button class="music-nav-arrow" onclick="cambiarPistaManual(-1)" aria-label="Pista anterior">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="12 6 6 12 12 18"/><polyline points="19 6 13 12 19 18"/></svg>
@@ -1128,45 +1129,180 @@
         ];
         let indicePistaActual = listaMusica.indexOf("audio/celeronbeats-gentle-night-rain-for-sleep-574972.mp3");
         if (indicePistaActual === -1) indicePistaActual = 0;
-        function reproducirPistaPredeterminada() {
-            const audio = document.getElementById('bg-music');
-            if (listaMusica.length > 0) {
-                audio.src = listaMusica[indicePistaActual];
-                audio.loop = true;
-                audio.load();
-                audio.play().catch(err => console.log("Error al reproducir pista predeterminada:", err));
+
+        // ---------- MÚSICA SIN CORTES: fundido cruzado al repetir la pista ----------
+        // Dos reproductores alternados. Cuando faltan FUNDIDO_SEG segundos para terminar la pista,
+        // la misma pista arranca en el otro reproductor subiendo de volumen mientras la actual baja.
+        // Funciona igual con cualquier pista de la lista (lee la duración real de cada una).
+        const FUNDIDO_SEG = 4;         // duración del fundido (súbelo a 6 u 8 para que sea aún más sutil)
+        const ANTICIPO_CARGA_SEG = 12; // cuántos segundos antes se precarga la repetición
+        let ctxAudio = null;
+        let reproductores = [];        // [{ el, gain }, { el, gain }]
+        let activo = 0;                // índice del reproductor que suena ahora
+        let musicaSonando = false;
+        let fundiendo = false;
+        let finFundido = 0;
+        let siguientePreparado = false;
+        let vigilante = null;
+
+        function iniciarMotorAudio() {
+            if (reproductores.length) return;
+            const el0 = document.getElementById('bg-music');
+            const el1 = new Audio();
+            el1.preload = 'none';
+            reproductores = [{ el: el0, gain: null }, { el: el1, gain: null }];
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) {
+                try {
+                    ctxAudio = new AC();
+                    reproductores.forEach(r => {
+                        const fuente = ctxAudio.createMediaElementSource(r.el);
+                        r.gain = ctxAudio.createGain();
+                        fuente.connect(r.gain);
+                        r.gain.connect(ctxAudio.destination);
+                    });
+                } catch (e) {
+                    ctxAudio = null; // sin Web Audio: se usa el bucle normal (con su pequeño corte)
+                }
             }
+            // Plan B: si una pista termina sin que el fundido la haya relevado, se reinicia sola
+            reproductores.forEach((r, i) => {
+                r.el.addEventListener('ended', () => {
+                    if (musicaSonando && !fundiendo && i === activo) {
+                        r.el.currentTime = 0;
+                        r.el.play().catch(() => {});
+                    }
+                });
+            });
         }
+
+        function fijarVolumen(r, v) {
+            if (!r.gain || !ctxAudio) return;
+            r.gain.gain.cancelScheduledValues(0); // cancela también cualquier curva de fundido en curso
+            r.gain.gain.setValueAtTime(v, ctxAudio.currentTime);
+        }
+
+        function curvaFundido(subiendo) {
+            // Curva de potencia constante: el volumen total se mantiene parejo durante el cruce
+            const n = 64, c = new Float32Array(n);
+            for (let i = 0; i < n; i++) {
+                const x = i / (n - 1);
+                c[i] = subiendo ? Math.sin(x * Math.PI / 2) : Math.cos(x * Math.PI / 2);
+            }
+            return c;
+        }
+
+        function comenzarFundido() {
+            const viejo = reproductores[activo];
+            const nuevo = reproductores[1 - activo];
+            const t = ctxAudio.currentTime;
+            nuevo.el.currentTime = 0;
+            nuevo.el.play().catch(() => {});
+            nuevo.gain.gain.cancelScheduledValues(0);
+            nuevo.gain.gain.setValueAtTime(0, t);
+            nuevo.gain.gain.setValueCurveAtTime(curvaFundido(true), t, FUNDIDO_SEG);
+            viejo.gain.gain.cancelScheduledValues(0);
+            viejo.gain.gain.setValueAtTime(1, t);
+            viejo.gain.gain.setValueCurveAtTime(curvaFundido(false), t, FUNDIDO_SEG);
+            fundiendo = true;
+            finFundido = t + FUNDIDO_SEG;
+        }
+
+        // Termina el fundido (o lo corta si hay que pausar o cambiar de pista): el nuevo queda como activo
+        function finalizarFundido() {
+            if (!fundiendo) return;
+            const viejo = reproductores[activo];
+            const nuevo = reproductores[1 - activo];
+            viejo.el.pause();
+            fijarVolumen(viejo, 0);
+            fijarVolumen(nuevo, 1);
+            activo = 1 - activo;
+            fundiendo = false;
+            siguientePreparado = false;
+        }
+
+        function vigilarPista() {
+            if (!musicaSonando || !ctxAudio || !reproductores.length) return;
+            if (fundiendo) {
+                if (ctxAudio.currentTime >= finFundido) finalizarFundido();
+                return;
+            }
+            const r = reproductores[activo];
+            const dur = r.el.duration;
+            if (!isFinite(dur) || dur < FUNDIDO_SEG * 3) return;
+            const resta = dur - r.el.currentTime;
+            const otro = reproductores[1 - activo];
+            if (!siguientePreparado && resta <= FUNDIDO_SEG + ANTICIPO_CARGA_SEG) {
+                otro.el.preload = 'auto';
+                otro.el.src = r.el.src;   // la misma pista, lista antes de necesitarla
+                otro.el.load();
+                fijarVolumen(otro, 0);
+                siguientePreparado = true;
+            }
+            if (siguientePreparado && resta <= FUNDIDO_SEG) comenzarFundido();
+        }
+
+        function arrancarVigilante() {
+            if (vigilante) return;
+            vigilante = setInterval(vigilarPista, 100);
+        }
+
+        function reproducirPista(indice) {
+            iniciarMotorAudio();
+            finalizarFundido();
+            const r = reproductores[activo];
+            const otro = reproductores[1 - activo];
+            otro.el.pause();
+            fijarVolumen(r, 1);
+            fijarVolumen(otro, 0);
+            siguientePreparado = false;
+            r.el.src = listaMusica[indice];
+            r.el.loop = !ctxAudio;   // solo si no hay Web Audio se usa el bucle normal
+            r.el.load();
+            if (ctxAudio && ctxAudio.state === 'suspended') ctxAudio.resume();
+            musicaSonando = true;
+            arrancarVigilante();
+            return r.el.play();
+        }
+
+        function reproducirPistaPredeterminada() {
+            reproducirPista(indicePistaActual).catch(err => console.log("Error al reproducir pista predeterminada:", err));
+        }
+
         function cambiarPistaManual(direccion) {
-            const audio = document.getElementById('bg-music');
             const text = document.getElementById('music-text');
             if (listaMusica.length === 0) return;
             indicePistaActual = (indicePistaActual + direccion + listaMusica.length) % listaMusica.length;
-            audio.src = listaMusica[indicePistaActual];
-            audio.loop = true;
-            audio.load();
-            audio.play().then(() => {
+            reproducirPista(indicePistaActual).then(() => {
                 text.innerText = "Música: On";
                 if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             }).catch(err => console.log("Error al cambiar pista manualmente:", err));
         }
+
         function toggleMusicaAleatoria() {
-            const audio = document.getElementById('bg-music');
             const text = document.getElementById('music-text');
-            if (audio.paused) {
-                if (!audio.src || audio.src === "" || audio.src === window.location.href) {
+            iniciarMotorAudio();
+            if (!musicaSonando) {
+                const r = reproductores[activo];
+                if (!r.el.src || r.el.src === "" || r.el.src === window.location.href) {
                     reproducirPistaPredeterminada();
                 } else {
-                    audio.play().catch(err => console.log("Error al reproducir audio:", err));
+                    if (ctxAudio && ctxAudio.state === 'suspended') ctxAudio.resume();
+                    r.el.play().catch(err => console.log("Error al reproducir audio:", err));
+                    musicaSonando = true;
+                    arrancarVigilante();
                 }
                 text.innerText = "Música: On";
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             } else {
-                audio.pause();
+                finalizarFundido();
+                reproductores[activo].el.pause();
+                musicaSonando = false;
                 text.innerText = "Música: Off";
                 if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             }
         }
+
         // Buscador paginado: máximo 3 resultados por página (la función buscar_historias de Supabase
         // hace el trabajo: ignora mayúsculas y tildes, usa índices y avisa si hay página siguiente).
         const MIN_CARACTERES_BUSQUEDA = 3;
