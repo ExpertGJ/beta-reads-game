@@ -717,6 +717,9 @@
         let pasoActualIndex = 0;
         let autorActualNombre = '';
         let tituloActual = '';
+        // Datos completos de la historia que se está leyendo (incluye TODOS sus capítulos, que llegan en la
+        // misma petición que la historia). Así pasar de capítulo no vuelve a pedir nada a Supabase.
+        let historiaActualData = null;
         let opcionSeleccionada = null; // opción marcada en el capítulo actual (null = ninguna)
 
         // Solo en memoria mientras la app está abierta (nada de esto se guarda en el teléfono):
@@ -1593,6 +1596,7 @@
 
         // Pinta título, autor, total de capítulos y estrellas con los datos que ya trae la historia
         function aplicarConfigHistoria(h) {
+            historiaActualData = h; // guarda la historia (con todos sus capítulos) para leerla sin más peticiones
             autorActualNombre = h.autor || 'Desconocido';
             tituloActual = h.titulo_historia || '';
             nActual = Number.isInteger(h.n) ? h.n : null;
@@ -1716,10 +1720,14 @@
             pasoActualIndex = obtenerIndicePorIdCapitulo(idCapitulo);
             actualizarBarritasProgreso();
 
-            // Capítulo + opciones en UNA sola petición (o ya vienen incluidos con la historia)
+            // El capítulo sale de los que ya vinieron con la historia (cero peticiones).
+            // Solo si no estuviera ahí se pide a Supabase (respaldo).
             const hId = historiaActualId;
             const nDeEstaHistoria = nActual;
             let capData = capituloPrecargado;
+            if (!capData && historiaActualData && historiaActualData.historia_id === hId && historiaActualData.capitulos) {
+                capData = historiaActualData.capitulos[idCapitulo] || null;
+            }
             if (!capData) {
                 const { data, error } = await supabaseClient
                     .rpc('obtener_capitulo', { p_historia: hId, p_capitulo: idCapitulo });
