@@ -707,8 +707,8 @@
             try {
                 const opts = cuerpo ? {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': (window.Telegram.WebApp.initData || '') },
-                    body: JSON.stringify(cuerpo)
+                    headers: { 'Content-Type': 'text/plain' },   // petición "simple": sin consulta previa (preflight)
+                    body: JSON.stringify({ ...cuerpo, initData: (window.Telegram.WebApp.initData || '') })
                 } : {};
                 const r = await fetch(API + ruta, opts);
                 if (!r.ok) return { data: null, error: r.status };
