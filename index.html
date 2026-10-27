@@ -1487,7 +1487,8 @@
         // La elección se hace dentro de Supabase (función obtener_historia_no_leida):
         // UNA sola petición por historia nueva, nunca se descarga la lista de historias.
         // Prioridad en la base: 1) ni permanente ni reciente, 2) no permanente (la vista hace más tiempo),
-        // 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo).
+        // 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo),
+        // 5) solo si no queda nada más: las 2 últimas mostradas (la anterior primero).
 
         // n = número de la historia (lo trae la respuesta de Supabase); se anota en la memoria corta
         function registrarEnHistorial(id, n) {
@@ -1510,34 +1511,19 @@
         }
 
         // Pide una historia nueva: no calificada/terminada y no vista hace poco (40% recientes / 60% resto).
-        // CORRECCIÓN: si la base devuelve una de las 2 últimas historias mostradas (catálogo pequeño con
-        // una sola "pendiente"), se pide otra vez ignorando las permanentes: así rotan TODAS las historias
-        // y ninguna desaparece del panel superior.
+        // UNA sola petición siempre: la base (obtener_historia_no_leida) ya evita por sí misma las 2 últimas
+        // historias de la lista (la que se está leyendo + la anterior) y solo las devuelve si no existe otra.
+        // Así ya no hace falta una segunda llamada y cada cambio de historia deja un solo registro en los logs.
         async function pedirHistoriaPonderada() {
             // La historia que el lector está mirando cuenta como la MÁS reciente (solo en este envío),
             // para que la base nunca la devuelva como "siguiente", aunque haya retrocedido en el historial.
             let recientes = leidas;
             if (Number.isInteger(nActual)) recientes = leidas.filter(x => x !== nActual).concat(nActual);
 
-            const llamar = (perm) => supabaseClient
-                .rpc('obtener_historia_no_leida', { p_perm: perm, p_recientes: recientes });
+            const { data, error } = await supabaseClient
+                .rpc('obtener_historia_no_leida', { p_perm: textoPermanentes(), p_recientes: recientes });
+            if (error || !data) return null;
 
-            const { data: primera, error } = await llamar(textoPermanentes());
-            if (error || !primera) return null;
-
-            // Se evitan las 2 últimas del historial y la que se está leyendo
-            const evitar = historialIds.slice(-2);
-            if (historiaActualId) evitar.push(historiaActualId);
-
-            const candidatas = [primera];
-            if (evitar.includes(primera.historia_id)) {
-                const { data: otra, error: error2 } = await llamar('');
-                if (!error2 && otra) candidatas.push(otra);
-            }
-            // Preferencia: 1) no vista hace poco, 2) distinta de la actual, 3) la primera que devolvió la base
-            const data = candidatas.find(c => !evitar.includes(c.historia_id))
-                      || candidatas.find(c => c.historia_id !== historiaActualId)
-                      || primera;
             // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
             // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
             guardarEnCache(data);
