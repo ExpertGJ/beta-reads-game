@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beta Reads</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -703,11 +702,19 @@
         </div>
     </div>
     <script>
-        const SUPABASE_URL = 'https://cnhtbdzzcfvrdkqzrfjf.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaHRiZHp6Y2Z2cmRrcXpyZmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDUzMTcsImV4cCI6MjEwNzIyMTMxN30.nBKNHG4ArcWkctm8n-rF592wZ2Aa7MG4fS-qswboWD0';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: { persistSession: false }
-        });
+        const API = 'https://beta-reads-api.expertgj.workers.dev';
+        async function api(ruta, cuerpo) {
+            try {
+                const opts = cuerpo ? {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': (window.Telegram.WebApp.initData || '') },
+                    body: JSON.stringify(cuerpo)
+                } : {};
+                const r = await fetch(API + ruta, opts);
+                if (!r.ok) return { data: null, error: r.status };
+                return { data: await r.json(), error: null };
+            } catch (e) { return { data: null, error: e }; }
+        }
         const tg = window.Telegram.WebApp;
         tg.expand();
         let historiaActualId = '';
@@ -1358,8 +1365,7 @@
             const texto = terminoBusqueda;
             const contenedorResultados = document.getElementById('search-results');
             const paginacion = document.getElementById('search-pagination');
-            const { data: res, error } = await supabaseClient
-                .rpc('buscar_historias', { p_texto: texto, p_pagina: paginaBusqueda });
+            const { data: res, error } = await api('/api/buscar?q=' + encodeURIComponent(texto) + '&p=' + paginaBusqueda);
             contenedorResultados.innerHTML = '';
             paginacion.style.display = 'none';
             if (error || !res) {
@@ -1520,8 +1526,7 @@
             let recientes = leidas;
             if (Number.isInteger(nActual)) recientes = leidas.filter(x => x !== nActual).concat(nActual);
 
-            const { data, error } = await supabaseClient
-                .rpc('obtener_historia_no_leida', { p_perm: textoPermanentes(), p_recientes: recientes });
+            const { data, error } = await api('/api/siguiente', { perm: textoPermanentes(), recientes });
             if (error || !data) return null;
 
             // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
@@ -1535,8 +1540,7 @@
         async function cargarHistoriaPorId(hId) {
             const enCache = cacheHistorias.get(hId);
             if (enCache) return enCache;
-            const { data, error } = await supabaseClient
-                .rpc('obtener_historia', { p_historia: hId });
+            const { data, error } = await api('/api/historia?id=' + encodeURIComponent(hId));
             if (error || !data) return null;
             guardarEnCache(data);
             return data;
@@ -1622,8 +1626,7 @@
             const nVotada = nActual;
             const tVotada = tituloActual, aVotada = autorActualNombre;
             // El voto se suma de forma atómica en la base (función votar_estrellas)
-            const { data, error } = await supabaseClient
-                .rpc('votar_estrellas', { p_historia: hVotada, p_estrellas: calificacion });
+            const { data, error } = await api('/api/votar', { historia: hVotada, estrellas: calificacion });
             if (error || !data) {
                 console.error("Error al registrar voto:", error);
                 return;
@@ -1714,12 +1717,7 @@
             if (!capData && historiaActualData && historiaActualData.historia_id === hId && historiaActualData.capitulos) {
                 capData = historiaActualData.capitulos[idCapitulo] || null;
             }
-            if (!capData) {
-                const { data, error } = await supabaseClient
-                    .rpc('obtener_capitulo', { p_historia: hId, p_capitulo: idCapitulo });
-                if (error || !data) return false; // no se toca imagen ni texto
-                capData = data;
-            }
+            if (!capData) return false; // no se toca imagen ni texto
             // La imagen cambia junto con el texto, cuando el capítulo ya está listo
             document.getElementById('imagen').src = 'https://picsum.photos/400/200?random=' + Math.random();
 
