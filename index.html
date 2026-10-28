@@ -675,7 +675,7 @@
                 <div class="search-section-footer">
                     <div class="search-input-group">
                         <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar libro o autor...">
-                        <button class="search-btn" onclick="buscarHistoriaSupabase()">Buscar</button>
+                        <button class="search-btn" onclick="buscarHistoria()">Buscar</button>
                     </div>
                     <div id="search-results" class="search-results"></div>
                     <div id="search-pagination" class="paginacion" style="display: none;">
@@ -725,7 +725,7 @@
         let autorActualNombre = '';
         let tituloActual = '';
         // Datos completos de la historia que se está leyendo (incluye TODOS sus capítulos, que llegan en la
-        // misma petición que la historia). Así pasar de capítulo no vuelve a pedir nada a Supabase.
+        // misma petición que la historia). Así pasar de capítulo no vuelve a pedir nada al servidor.
         let historiaActualData = null;
         let opcionSeleccionada = null; // opción marcada en el capítulo actual (null = ninguna)
 
@@ -735,7 +735,7 @@
         const MAX_HISTORIAL = 30;
 
         // Caché en memoria de las últimas historias mostradas: ir atrás/adelante NO vuelve a pedir nada
-        // a Supabase (egreso cero). Se pierde al cerrar la app; no ocupa espacio en el teléfono.
+        // al servidor (cero peticiones). Se pierde al cerrar la app; no ocupa espacio en el teléfono.
         const MAX_CACHE = 15;
         const cacheHistorias = new Map();
         function guardarEnCache(data) {
@@ -752,13 +752,13 @@
         //  1) br_votos : calificaciones del usuario (para la lista del perfil)
         //  2) br_perm  : historias PERMANENTES (calificadas o terminadas) como mapa de bits en base64
         //  3) br_leidas: las últimas MAX_LEIDAS historias mostradas (memoria corta)
-        // Historias, capítulos, votos totales y promedio se piden a Supabase cada vez que se muestran.
+        // Historias, capítulos, votos totales y promedio se piden al servidor cada vez que se muestran.
         const CLAVE_VOTOS = 'br_votos';
         const MAX_VOTOS_GUARDADOS = 10000; // ~1,2 MB en el teléfono; al pasar de 10.000 se borra la más antigua de la lista
 
         // ---------- HISTORIAS PERMANENTES: calificadas o terminadas (llegó al final) ----------
         // Un bit por historia (el bit número n se enciende cuando la historia n queda terminada o calificada).
-        // Se envía a Supabase como un solo texto base64 (~170 bytes para 1000 historias) y la base
+        // Se envía al servidor como un solo texto base64 (~170 bytes para 1000 historias) y la base
         // NUNCA vuelve a recomendar esas historias mientras existan otras. Lo que SUBE no cuenta como egreso.
         // ---------- inicio permanentes ----------
         const CLAVE_PERM = 'br_perm';
@@ -806,7 +806,7 @@
 
         // ---------- MEMORIA CORTA: últimas historias mostradas ----------
         // Solo las últimas MAX_LEIDAS: así lo que el lector pasó con las flechas sin leer
-        // puede volver a aparecer más adelante. Viaja a Supabase con cada petición de historia nueva.
+        // puede volver a aparecer más adelante. Viaja al servidor con cada petición de historia nueva.
         const CLAVE_LEIDAS = 'br_leidas';
         const MAX_LEIDAS = 60;
         function cargarLeidas() {
@@ -1313,7 +1313,7 @@
             }
         }
 
-        // Buscador paginado: máximo 3 resultados por página (la función buscar_historias de Supabase
+        // Buscador paginado: máximo 3 resultados por página (el servidor
         // hace el trabajo: ignora mayúsculas y tildes, usa índices y avisa si hay página siguiente).
         const MIN_CARACTERES_BUSQUEDA = 3;
         let terminoBusqueda = '';
@@ -1336,7 +1336,7 @@
             terminoBusqueda = '';
             paginaBusqueda = 0;
         }
-        async function buscarHistoriaSupabase() {
+        async function buscarHistoria() {
             const texto = document.getElementById('input-busqueda').value.trim();
             const contenedorResultados = document.getElementById('search-results');
             contenedorResultados.innerHTML = '';
@@ -1358,6 +1358,26 @@
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             await mostrarPaginaBusqueda();
         }
+        // 1 petición trae LOTE_BUSQUEDA resultados (4 páginas de 3). Pasar de página dentro del lote no pide nada.
+        const LOTE_BUSQUEDA = 12;
+        const POR_PAGINA_BUSQUEDA = 3;
+        let cacheBusqueda = { texto: '', lotes: {} };
+        async function buscarConLote(texto, pagina) {
+            const clave = texto.toLowerCase();
+            if (cacheBusqueda.texto !== clave) cacheBusqueda = { texto: clave, lotes: {} };
+            const paginasPorLote = LOTE_BUSQUEDA / POR_PAGINA_BUSQUEDA;
+            const idx = Math.floor(pagina / paginasPorLote);
+            let lote = cacheBusqueda.lotes[idx];
+            if (!lote) {
+                const { data, error } = await api('/api/buscar?q=' + encodeURIComponent(texto) + '&c=' + idx);
+                if (error || !data) return { data: null, error: error || true };
+                lote = cacheBusqueda.lotes[idx] = data;
+            }
+            const desde = (pagina % paginasPorLote) * POR_PAGINA_BUSQUEDA;
+            const items = lote.items.slice(desde, desde + POR_PAGINA_BUSQUEDA);
+            const hayMas = (desde + POR_PAGINA_BUSQUEDA < lote.items.length) || !!lote.hay_mas;
+            return { data: { items, hay_mas: hayMas }, error: null };
+        }
         async function mostrarPaginaBusqueda() {
             if (buscandoPagina) return; // evita toques repetidos mientras carga
             buscandoPagina = true;
@@ -1365,7 +1385,7 @@
             const texto = terminoBusqueda;
             const contenedorResultados = document.getElementById('search-results');
             const paginacion = document.getElementById('search-pagination');
-            const { data: res, error } = await api('/api/buscar?q=' + encodeURIComponent(texto) + '&p=' + paginaBusqueda);
+            const { data: res, error } = await buscarConLote(texto, paginaBusqueda);
             contenedorResultados.innerHTML = '';
             paginacion.style.display = 'none';
             if (error || !res) {
@@ -1490,7 +1510,7 @@
         }
 
         // ---------- SELECCIÓN PONDERADA (40% recientes / 60% resto) ----------
-        // La elección se hace dentro de Supabase (función obtener_historia_no_leida):
+        // La elección se hace dentro del servidor (ruta /api/lote):
         // UNA sola petición por historia nueva, nunca se descarga la lista de historias.
         // Prioridad en la base: 1) ni permanente ni reciente, 2) no permanente (la vista hace más tiempo),
         // 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo),
@@ -1517,26 +1537,34 @@
         }
 
         // Pide una historia nueva: no calificada/terminada y no vista hace poco (40% recientes / 60% resto).
-        // UNA sola petición siempre: la base (obtener_historia_no_leida) ya evita por sí misma las 2 últimas
+        // UNA sola petición siempre: el servidor ya evita por sí misma las 2 últimas
         // historias de la lista (la que se está leyendo + la anterior) y solo las devuelve si no existe otra.
         // Así ya no hace falta una segunda llamada y cada cambio de historia deja un solo registro en los logs.
+        // ---------- LOTES: una petición trae varias historias; las demás esperan en memoria ----------
+        // (solo en memoria mientras la app está abierta; no se guarda nada en el teléfono)
+        const LOTE_HISTORIAS = 5;       // historias por petición (1 que se ve + 4 que esperan)
+        const colaAdelante = [];        // historias ya descargadas y todavía no mostradas
         async function pedirHistoriaPonderada() {
+            // Si ya hay historias esperando, se muestra la siguiente SIN hacer ninguna petición
+            if (colaAdelante.length) {
+                const h = colaAdelante.shift();
+                guardarEnCache(h);
+                return h;
+            }
             // La historia que el lector está mirando cuenta como la MÁS reciente (solo en este envío),
-            // para que la base nunca la devuelva como "siguiente", aunque haya retrocedido en el historial.
+            // para que el servidor nunca la devuelva como "siguiente", aunque haya retrocedido en el historial.
             let recientes = leidas;
             if (Number.isInteger(nActual)) recientes = leidas.filter(x => x !== nActual).concat(nActual);
-
-            const { data, error } = await api('/api/siguiente', { perm: textoPermanentes(), recientes });
-            if (error || !data) return null;
-
-            // data.ciclo_completo = el lector ya terminó todo el catálogo: la base sigue recomendando al azar
-            // (las permanentes no se borran; cuando agregues historias nuevas serán las primeras en salir)
-            guardarEnCache(data);
-            return data;
+            const { data, error } = await api('/api/lote', { perm: textoPermanentes(), recientes, n: LOTE_HISTORIAS });
+            if (error || !data || !Array.isArray(data.items) || data.items.length === 0) return null;
+            const primera = data.items.shift();
+            colaAdelante.push(...data.items);
+            guardarEnCache(primera);
+            return primera;
         }
 
         // Historia concreta (ir atrás/adelante, perfil, enlaces): primero la caché en memoria (egreso cero);
-        // si no está, se pide completa a Supabase
+        // si no está, se pide completa al servidor
         async function cargarHistoriaPorId(hId) {
             const enCache = cacheHistorias.get(hId);
             if (enCache) return enCache;
@@ -1625,7 +1653,7 @@
             const hVotada = historiaActualId;
             const nVotada = nActual;
             const tVotada = tituloActual, aVotada = autorActualNombre;
-            // El voto se suma de forma atómica en la base (función votar_estrellas)
+            // El voto se suma de forma atómica en el servidor
             const { data, error } = await api('/api/votar', { historia: hVotada, estrellas: calificacion });
             if (error || !data) {
                 console.error("Error al registrar voto:", error);
@@ -1710,7 +1738,7 @@
             actualizarBarritasProgreso();
 
             // El capítulo sale de los que ya vinieron con la historia (cero peticiones).
-            // Solo si no estuviera ahí se pide a Supabase (respaldo).
+            // Si no estuviera ahí, no se muestra nada.
             const hId = historiaActualId;
             const nDeEstaHistoria = nActual;
             let capData = capituloPrecargado;
