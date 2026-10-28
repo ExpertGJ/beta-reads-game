@@ -718,7 +718,7 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         let historiaActualId = '';
-        let nActual = null;          // número (id) de la historia que se está leyendo; lo trae Supabase
+        let nActual = null;          // número (id) de la historia que se está leyendo; lo trae el servidor
         let capituloActualId = 'cap_1';
         let totalPasosHistoria = 3;
         let pasoActualIndex = 0;
@@ -1516,7 +1516,7 @@
         // 3) cualquiera no reciente (ciclo_completo), 4) cualquiera (ciclo_completo),
         // 5) solo si no queda nada más: las 2 últimas mostradas (la anterior primero).
 
-        // n = número de la historia (lo trae la respuesta de Supabase); se anota en la memoria corta
+        // n = número de la historia (lo trae el servidor); se anota en la memoria corta
         function registrarEnHistorial(id, n) {
             // Si ya se está mirando esa historia, no se duplica en el historial
             if (historialIds[indiceHistorial] !== id) {
@@ -1555,10 +1555,16 @@
             // para que el servidor nunca la devuelva como "siguiente", aunque haya retrocedido en el historial.
             let recientes = leidas;
             if (Number.isInteger(nActual)) recientes = leidas.filter(x => x !== nActual).concat(nActual);
-            const { data, error } = await api('/api/lote', { perm: textoPermanentes(), recientes, n: LOTE_HISTORIAS });
-            if (error || !data || !Array.isArray(data.items) || data.items.length === 0) return null;
-            const primera = data.items.shift();
-            colaAdelante.push(...data.items);
+            const lote = await api('/api/lote', { perm: textoPermanentes(), recientes, n: LOTE_HISTORIAS });
+            let items = (!lote.error && lote.data && Array.isArray(lote.data.items)) ? lote.data.items : null;
+            if (!items) {
+                // Plan B: el servidor falló o no tiene la ruta de lotes: se pide UNA historia con la ruta anterior
+                const una = await api('/api/siguiente', { perm: textoPermanentes(), recientes });
+                items = (!una.error && una.data) ? [una.data] : [];
+            }
+            if (items.length === 0) return null;
+            const primera = items.shift();
+            colaAdelante.push(...items);
             guardarEnCache(primera);
             return primera;
         }
@@ -1592,7 +1598,7 @@
                 if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 
                 let data = null;
-                // Ir atrás/adelante dentro de lo ya visto: sale de la caché (o de Supabase si ya no está en ella)
+                // Ir atrás/adelante dentro de lo ya visto: sale de la caché (o del servidor si ya no está en ella)
                 const destino = indiceHistorial + direccion;
                 if (destino >= 0 && destino < historialIds.length) {
                     data = await cargarHistoriaPorId(historialIds[destino]);
@@ -1704,6 +1710,7 @@
                     <div class="blocked-card">
                         <h3>No hay historias disponibles</h3>
                         <p>Vuelve más tarde para disfrutar de nuevas aventuras.</p>
+                        <button class="btn" onclick="location.reload()" style="margin-top: 10px;">Reintentar</button>
                     </div>
                 `;
                 return;
