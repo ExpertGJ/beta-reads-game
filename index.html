@@ -1686,11 +1686,12 @@
             const telegramUser = tg.initDataUnsafe?.user;
             const params = new URLSearchParams(window.location.search);
             const startParam = tg.initDataUnsafe?.start_param;
-            if ((!telegramUser || !telegramUser.id) && !params.get('historia') && !params.get('startapp') && !startParam) {
+            if (!tg.initData || !telegramUser || !telegramUser.id) {   // fuera de Telegram no se abre (ni con ?startapp= en la dirección)
                 document.getElementById('app').innerHTML = `
                     <div class="blocked-card">
                         <h3>Acceso Restringido</h3>
                         <p>Abre esta Mini App directamente desde Telegram.</p>
+                        <a class="btn" href="https://t.me/BetaReadsBot" style="display: block; text-decoration: none; margin-top: 10px;">Abrir en Telegram</a>
                     </div>
                 `;
                 return;
